@@ -1,0 +1,12 @@
+import enum
+
+class Verbs(enum.Enum):
+    SIGN_UP = "SIGN_UP"
+    LOG_IN = "LOG_IN"
+    CREATE_FILE = "CREATE_FILE"
+    CREATE_DIR = "CREATE_DIR"
+    DOWNLOAD_FILE = "DOWNLOAD_FILE"
+    DELETE_FILE = "DELETE_FILE"
+    DELETE_DIR = "DELETE_DIR"
+    GET_ITEMS_LIST = "GET_ITEMS_LIST"
+
