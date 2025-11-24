@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
-from Services.ServerFileService import FileService
+from Services.ServerFileService import FileService, Items
 from Services.TokensService import TokensService
 from Services.UsersService import UsersService
 
@@ -71,7 +71,7 @@ class ServerClass:
         logging.info(f"Is token valid: {is_token_valid}.")
 
         response = ""
-        response_data = []
+        response_data = ""
         needs_data = False
 
         match verb:
@@ -96,7 +96,7 @@ class ServerClass:
             case Verbs.DOWNLOAD_FILE.value:
                 logging.debug("verb = DOWNLOAD_FILE")
                 if is_token_valid:
-                    response_data.append(self.file_service.get_file_contents(username, data[0], data[1]))
+                    response_data = self.file_service.get_file_contents(username, data[0], data[1])
                     response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
@@ -108,12 +108,11 @@ class ServerClass:
                     logging.debug(f"dirs: {dirs}")
                     files = self.file_service.get_files_list_in_path(username, data[0])
                     logging.debug(f"files: {files}")
-                    if len(dirs) > 0: response_data.append(json.dumps([directory.__dict__ for directory in dirs]))
-                    else: response_data.append(json.dumps([]))
-                    if len(files) > 0: response_data.append(json.dumps([file_obj.__dict__ for file_obj in files]))
-                    else: response_data.append(json.dumps([]))
-                    logging.debug(f"Response data: \n Dirs: {response_data[0]} \n Files: {response_data[1]}")
+                    dirs_dumps = json.dumps([directory.__dict__ for directory in dirs])
+                    files_dumps = json.dumps([file_obj.__dict__ for file_obj in files])
+                    logging.debug(f"Response data: \n Dirs: {dirs_dumps} \n Files: {files_dumps}")
                     response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
+                    response_data = json.dumps(Items(dirs_dumps, files_dumps).__dict__)
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
 
@@ -188,17 +187,12 @@ class ServerClass:
         client.send(message.encode())
         logging.debug("Sent Response")
 
-
-    def send_data(self, client, data: list):
+    def send_data(self, client, data: str | bytes):
         logging.debug("Starting to send Data")
-        str_to_send = b""
-        for item in data:
-            if isinstance(item, str):
-                str_to_send += item.encode()
-            else:
-                str_to_send += bytes(item)
-            str_to_send += seperator.encode()
-            logging.debug(f"Current Data: {str_to_send}")
+        if isinstance(data, str):
+            str_to_send = data.encode()
+        else:
+            str_to_send = bytes(data)
         str_to_send += end_flag
         logging.debug(f"Final Data: {str_to_send}")
         time.sleep(0.5)

@@ -155,6 +155,11 @@ class File:
         self.name = name
         self.size = size
 
+class Items:
+    def __init__(self, dirs_dumps, files_dumps):
+        self.dirs_dumps = dirs_dumps
+        self.files_dumps = files_dumps
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
