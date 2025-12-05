@@ -91,14 +91,6 @@ class FilesDatabaseDAO:
             FilesDB.is_directory == True
         ).execute()
 
-    def get_file_size(self, file_owner_id, user_file_path, user_file_name):
-        return FilesDB.select().where(
-            FilesDB.file_owner_id == file_owner_id,
-            FilesDB.user_file_path == user_file_path,
-            FilesDB.user_file_name == user_file_name,
-            FilesDB.is_directory == False
-        ).get().file_size
-
     def get_file_uuid(self, file_owner_id, user_file_path, user_file_name):
         return FilesDB.select().where(
             FilesDB.file_owner_id == file_owner_id,
@@ -116,11 +108,11 @@ class FilesDatabaseDAO:
         ).exists()
 
     def get_all_files_in_path(self, file_owner_id, path):
-        return FilesDB.select().where(
+        return list(FilesDB.select().where(
             FilesDB.file_owner_id == file_owner_id,
             FilesDB.user_file_path == path,
             FilesDB.is_directory == False
-        )
+        ))
 
     def get_all_dirs_in_path(self, file_owner_id, path):
         return list(FilesDB.select().where(

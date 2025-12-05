@@ -1,7 +1,6 @@
 import json
 import logging
 import socket
-import time
 import atexit
 from concurrent.futures import ThreadPoolExecutor
 
@@ -232,7 +231,6 @@ class ServerClass:
             str_to_send = bytes(data)
         str_to_send += end_flag
         logging.debug(f"Final Data: {str_to_send}")
-        time.sleep(0.5)
         client.sendall(str_to_send)
         logging.debug("Finished Sending Data")
 

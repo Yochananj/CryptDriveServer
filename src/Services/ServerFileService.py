@@ -110,7 +110,7 @@ class FileService:
 
     def move_file(self, file_owner, old_user_file_path, new_user_file_path, file_name):
         file_owner_id = self.users_service.get_user_id(file_owner)
-        if self.files_database_dao.does_file_exist(file_owner_id, old_user_file_path, file_name):
+        if self.files_database_dao.does_file_exist(file_owner_id, old_user_file_path, file_name) and not self.files_database_dao.does_file_exist(file_owner_id, new_user_file_path, file_name):
             logging.debug(f"Moving file from {old_user_file_path} to {new_user_file_path}.")
             self.files_database_dao.rename_and_move_file(
                 file_owner_id=file_owner_id,
@@ -137,7 +137,7 @@ class FileService:
                     new_user_file_name=file.user_file_name
                 )
 
-            self.files_database_dao.rename_and_move_dir(file_owner_id, dir_path, old_dir_name, new_dir_name)
+            self.files_database_dao.rename_and_move_dir(file_owner_id, dir_path, dir_path, old_dir_name, new_dir_name)
             return True
         else:
             logging.error("Directory cannot be renamed. Either it does not exist or a directory with the new name already exists.")
@@ -147,7 +147,8 @@ class FileService:
         file_owner_id = self.users_service.get_user_id(file_owner)
         if self.files_database_dao.does_dir_exist(file_owner_id, old_dir_path, dir_name) and not self.files_database_dao.does_dir_exist(file_owner_id, new_dir_path, dir_name):
             logging.debug(f"Moving directory {dir_name} form {old_dir_path} to {new_dir_path}. \nGetting all files in directory...")
-            for file in self.files_database_dao.get_all_files_in_path(file_owner_id,f"{old_dir_path if old_dir_path != "/" else ""}/{dir_name}"):
+            files = list(self.files_database_dao.get_all_files_in_path(file_owner_id,f"{old_dir_path if old_dir_path != "/" else ""}/{dir_name}"))
+            for file in files:
                 self.files_database_dao.rename_and_move_file(
                     file_owner_id=file_owner_id,
                     old_user_file_path=file.user_file_path,
@@ -172,8 +173,6 @@ class FileService:
         file_contents = self.files_disk_dao.get_file_contents(file_owner_id, file_uuid)
         return file_contents
 
-    def get_file_size(self, file_owner, user_file_path, file_name):
-        return self.files_database_dao.get_file_size(file_owner, user_file_path, file_name)
 
     def get_dirs_list_for_path(self, file_owner, path):
         logging.debug(f"Getting dirs list for path {path} for user {file_owner}.")
