@@ -71,7 +71,7 @@ class ServerClass:
 
         response = ""
         response_data = ""
-        needs_data = False
+        needs_file_contents = False
 
         match verb:
             case Verbs.SIGN_UP.value:
@@ -120,7 +120,7 @@ class ServerClass:
                 if is_token_valid:
                     if self.file_service.can_create_file(username, data[0], data[1]):
                         response = self.write_message("SUCCESS", client_token, "READY_FOR_DATA")
-                        needs_data = True
+                        needs_file_contents = True
                     else:
                         response = self.write_message("ERROR", client_token, "FILE_EXISTS")
                 else:
@@ -193,13 +193,24 @@ class ServerClass:
 
             case _:
                 logging.debug("Invalid Verb")
-        logging.debug(f"Sending Response: {response}")
+
+        logging.debug(f"Response: {response}")
+        logging.debug(f"Response Data: {response_data}")
+        logging.debug(f"Response Data Length: {len(response_data)}, type: {type(response_data)}")
+
+        response = response.encode()
+
+        if len(response_data) > 0:
+            logging.debug("Adding data to response")
+            if isinstance(response_data, str):
+                response += string_data_flag + response_data.encode()
+            else:
+                response += byte_data_flag + bytes(data)
+            logging.debug(f"Final Response: {response}")
+
         self.respond_to_client(client, response)
 
-        logging.debug(f"Response Data: {response_data}")
-        logging.debug(f"Response Data Length: {len(response_data)}")
-
-        if needs_data:
+        if needs_file_contents:
             logging.debug("Waiting for Data")
             data_received = self.receive_data(client)
             if self.file_service.create_file(username, data[0], data[1], data_received):
@@ -207,9 +218,10 @@ class ServerClass:
             else:
                 self.respond_to_client(client, self.write_message("ERROR", client_token, "FILE_NOT_CREATED"))
 
-        if len(response_data) > 0:
-            logging.debug("Sending Data")
-            self.send_data(client, response_data)
+    def respond_to_client(self, client, message):
+        message += end_flag
+        client.sendall(message)
+        logging.debug("Sent Response")
 
     def write_message(self, success, token, status_code=None):
         logging.debug(f"Writing Message: Success?: {success}")
@@ -218,21 +230,6 @@ class ServerClass:
             message += seperator + status_code
         logging.debug(f"Final Message: {message}")
         return message
-
-    def respond_to_client(self, client, message):
-        client.send(message.encode())
-        logging.debug("Sent Response")
-
-    def send_data(self, client, data: str | bytes):
-        logging.debug("Starting to send Data")
-        if isinstance(data, str):
-            str_to_send = data.encode()
-        else:
-            str_to_send = bytes(data)
-        str_to_send += end_flag
-        logging.debug(f"Final Data: {str_to_send}")
-        client.sendall(str_to_send)
-        logging.debug("Finished Sending Data")
 
     def server_close(self):
         self.server.close()
@@ -254,7 +251,7 @@ class ServerClass:
                 received_data += data_chunk
 
         logging.info(f"finished receiving data:")
-        if len(received_data) < 5000: logging.info(f"{received_data}")
+        if len(received_data) < 1000: logging.info(f"{received_data}")
 
         return received_data
 

@@ -119,6 +119,10 @@ class FileService:
                 old_user_file_name=file_name,
                 new_user_file_name=file_name
             )
+            old_parent_dir_name, old_parent_dir_path = self._get_parent_dir_name_and_path(old_user_file_path)
+            self.files_database_dao.decrease_dir_item_count(file_owner_id, old_parent_dir_path, old_parent_dir_name)
+            new_parent_dir_name, new_parent_dir_path = self._get_parent_dir_name_and_path(new_user_file_path)
+            self.files_database_dao.increase_dir_item_count(file_owner_id, new_parent_dir_path, new_parent_dir_name)
             return True
         else:
             logging.error("File cannot be moved. Either it does not exist or a file with the new name already exists.")
@@ -143,21 +147,24 @@ class FileService:
             logging.error("Directory cannot be renamed. Either it does not exist or a directory with the new name already exists.")
             return False
 
-    def move_dir(self, file_owner, old_dir_path, new_dir_path, dir_name):
+    def move_dir(self, file_owner, old_parent_dir_path, new_parent_dir_path, dir_name):
         file_owner_id = self.users_service.get_user_id(file_owner)
-        if self.files_database_dao.does_dir_exist(file_owner_id, old_dir_path, dir_name) and not self.files_database_dao.does_dir_exist(file_owner_id, new_dir_path, dir_name):
-            logging.debug(f"Moving directory {dir_name} form {old_dir_path} to {new_dir_path}. \nGetting all files in directory...")
-            files = list(self.files_database_dao.get_all_files_in_path(file_owner_id,f"{old_dir_path if old_dir_path != "/" else ""}/{dir_name}"))
+        if self.files_database_dao.does_dir_exist(file_owner_id, old_parent_dir_path, dir_name) and not self.files_database_dao.does_dir_exist(file_owner_id, new_parent_dir_path, dir_name):
+            logging.debug(f"Moving directory {dir_name} form {old_parent_dir_path} to {new_parent_dir_path}. \nGetting all files in directory...")
+            files = list(self.files_database_dao.get_all_files_in_path(file_owner_id,f"{old_parent_dir_path if old_parent_dir_path != "/" else ""}/{dir_name}"))
             for file in files:
                 self.files_database_dao.rename_and_move_file(
                     file_owner_id=file_owner_id,
                     old_user_file_path=file.user_file_path,
-                    new_user_file_path=f"{new_dir_path if new_dir_path != "/" else ""}/{dir_name}",
+                    new_user_file_path=f"{new_parent_dir_path if new_parent_dir_path != "/" else ""}/{dir_name}",
                     old_user_file_name=file.user_file_name,
                     new_user_file_name=file.user_file_name
                 )
-
-            self.files_database_dao.rename_and_move_dir(file_owner_id, old_dir_path, dir_name, dir_name)
+            self.files_database_dao.rename_and_move_dir(file_owner_id, old_parent_dir_path, new_parent_dir_path, dir_name, dir_name)
+            old_parent_dir_name, old_parent_dir_path = self._get_parent_dir_name_and_path(old_parent_dir_path)
+            self.files_database_dao.decrease_dir_item_count(file_owner_id, old_parent_dir_path, old_parent_dir_name)
+            new_parent_dir_name, new_parent_dir_path = self._get_parent_dir_name_and_path(new_parent_dir_path)
+            self.files_database_dao.increase_dir_item_count(file_owner_id, new_parent_dir_path, new_parent_dir_name)
             return True
         else:
             logging.error(

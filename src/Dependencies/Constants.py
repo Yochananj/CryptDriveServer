@@ -9,11 +9,13 @@ app_author = "YochananJulian"
 
 # Flags
 seperator = "|||"
+byte_data_flag = b"||| BYTE DATA |||"
+string_data_flag = b"||| STRING DATA |||"
 end_flag = b"||| END |||"
 
 
 # Common Constants
-server_address = "127.0.0.1"
+server_address = "0.0.0.0"
 server_port = 8081
 host_addr = (server_address, server_port)
 
