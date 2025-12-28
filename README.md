@@ -6,7 +6,7 @@ CryptDrive is an encrypted file storage solution developed in Python, providing 
 
 Features:
 
-- RSA Encrypted Communication: All client-server communications utilize RSA asymmetric encryption
+- AES Encrypted Communication: All client-server communications utilize AES asymmetric encryption
 - Server-Side File Encryption: Files stored on the server are encrypted at rest
 - Cross-Platform GUI: Client interface built with Flet (Flutter Material Design framework for Python)
 - Secure File Management: Upload, download, and manage encrypted files remotely
