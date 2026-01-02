@@ -1,13 +1,16 @@
+import atexit
 import json
 import logging
 import socket
-import atexit
 from concurrent.futures import ThreadPoolExecutor
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
+from Services.SecureCommunicationManager import SecureCommunicationManager
 from Services.ServerFileService import FileService, Items
-from Services.TokensService import TokensService
+from Services.TokenService import TokenService
 from Services.UsersService import UsersService
 
 
@@ -19,10 +22,19 @@ class ServerClass:
         self.user_service = UsersService()
         self.file_service = FileService(self.user_service)
 
-        self.token_service = TokensService()
+        self.token_service = TokenService()
+        self.encryption_token_master_key = AESGCM.generate_key(bit_length=256)
+        logging.debug(f"Generated token master key: {self.encryption_token_master_key}")
 
         self.host_addr = host_addr
-        self.server.bind(self.host_addr)
+        try:
+            self.server.bind(self.host_addr)
+        except OSError as exception:
+            logging.error(f"\n\n\nError starting server: {exception}")
+            self.server_close()
+            logging.info("Server Closed.")
+            return
+
 
         self.pool = ThreadPoolExecutor(2*os.cpu_count())
 
@@ -30,29 +42,30 @@ class ServerClass:
 
 
     def server_listen(self):
-        self.server.listen(100)
-        logging.info(f"src Listening On: {self.host_addr}")
         try:
+            self.server.listen(100)
+            logging.info(f"Server listening On: {self.host_addr}")
             while self.is_server_running:
                 client, client_addr = self.server.accept()
-                logging.info(f"Client Connected: {client_addr}")
+                logging.info(f"\n\n\n\nClient Connected: {client_addr}")
                 self.pool.submit(self.begin_client_communication, client, client_addr)
         except KeyboardInterrupt:
             self.server_close()
         finally:
-            logging.info("src Closed.")
+            self.server_close()
+            logging.info("Server Closed.")
 
 
     def begin_client_communication(self, client, client_addr):
         logging.info(f"Receiving Message From: {client_addr}")
+        secure_communication_manager = SecureCommunicationManager(client, self.token_service, self.encryption_token_master_key)
+        message = secure_communication_manager.receive_data().decode()
+        logging.info(f"Message Received: {message}. Parsing Message...")
+        self.parse_message(message, secure_communication_manager)
 
-        data = client.recv(buffer_size).decode()
-        logging.debug(f"Received: {data}")
-        self.parse_message(client, data)
-
-    def parse_message(self, client, message):
-        message_parts = message.split(seperator)
-
+    def parse_message(self, message, secure_communication_manager: SecureCommunicationManager):
+        message_parts = message.split(separator)
+        logging.debug(f"Message parts: {message_parts}")
         verb = message_parts[0]
         client_token = message_parts[1]
         data = message_parts[2:len(message_parts)]
@@ -62,10 +75,10 @@ class ServerClass:
         is_token_valid = self.token_service.is_token_valid(client_token)
 
         username = ""
-        if is_token_valid :
+        if is_token_valid:
             username = self.token_service.decode_token(client_token)["username"]
-            if self.token_service.does_token_need_refreshing(client_token):
-                client_token = self.token_service.create_token(username=self.token_service.decode_token(client_token)["username"])
+            if self.token_service.token_needs_refreshing(client_token):
+                client_token = self.token_service.create_login_token(username=self.token_service.decode_token(client_token)["username"])
 
         logging.info(f"Is token valid: {is_token_valid}.")
 
@@ -80,7 +93,7 @@ class ServerClass:
                     logging.debug(f"Created User: {data[0]}, with password hash: {data[1]}")
                     self.file_service.create_dir(data[0], None, "/")
                     logging.debug(f"Created root directory for user: {data[0]}")
-                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
+                    response = self.write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
                 else:
                     logging.debug(f"User {data[0]} already exists.")
                     response = self.write_message("ERROR", client_token, "USER_EXISTS")
@@ -88,7 +101,7 @@ class ServerClass:
             case Verbs.LOG_IN.value:
                 logging.debug("verb = LOG_IN")
                 if self.user_service.login(data[0], data[1]):
-                    response = self.write_message("SUCCESS", self.token_service.create_token(username=data[0]))
+                    response = self.write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
                 else:
                     response = self.write_message("ERROR", client_token, "INVALID_CREDENTIALS")
 
@@ -193,6 +206,7 @@ class ServerClass:
 
             case _:
                 logging.debug("Invalid Verb")
+                response = self.write_message("ERROR", client_token, "INVALID_VERB")
 
         logging.debug(f"Response: {response}")
         logging.debug(f"Response Data: {response_data}")
@@ -205,29 +219,24 @@ class ServerClass:
             if isinstance(response_data, str):
                 response += string_data_flag + response_data.encode()
             else:
-                response += byte_data_flag + bytes(data)
-            logging.debug(f"Final Response: {response}")
+                response += byte_data_flag + response_data
+            logging.debug(f"Message with data: {response}")
 
-        self.respond_to_client(client, response)
+        secure_communication_manager.respond_to_client(response)
 
         if needs_file_contents:
             logging.debug("Waiting for Data")
-            data_received = self.receive_data(client)
+            data_received = secure_communication_manager.receive_data()
             if self.file_service.create_file(username, data[0], data[1], data_received):
-                self.respond_to_client(client, self.write_message("SUCCESS", client_token, "FILE_CREATED").encode())
+                secure_communication_manager.respond_to_client(self.write_message("SUCCESS", client_token, "FILE_CREATED").encode())
             else:
-                self.respond_to_client(client, self.write_message("ERROR", client_token, "FILE_NOT_CREATED").encode())
-
-    def respond_to_client(self, client, message: bytes):
-        message += end_flag
-        client.sendall(message)
-        logging.debug("Sent Response")
+                secure_communication_manager.respond_to_client(self.write_message("ERROR", client_token, "FILE_NOT_CREATED").encode())
 
     def write_message(self, success, token, status_code=None):
         logging.debug(f"Writing Message: Success?: {success}")
-        message = success + seperator + token
+        message = success + separator + token
         if status_code:
-            message += seperator + status_code
+            message += separator + status_code
         logging.debug(f"Final Message: {message}")
         return message
 
@@ -235,31 +244,10 @@ class ServerClass:
         self.server.close()
         self.is_server_running = False
 
-    def receive_data(self, client):
-        finished = False
-        received_data = b""
-
-        logging.debug("Initializing data receiving")
-
-        while not finished:
-            data_chunk = client.recv(buffer_size)
-
-            if data_chunk.endswith(end_flag):
-                finished = True
-                received_data += data_chunk[:-len(end_flag)]
-            else:
-                received_data += data_chunk
-
-        logging.info(f"finished receiving data:")
-        if len(received_data) < 1000: logging.info(f"{received_data}")
-
-        return received_data
-
-
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(threadName)-12s | %(levelname)-5s | %(message)s')
     a = ServerClass()
     atexit.register(ServerClass.server_close, a)
 

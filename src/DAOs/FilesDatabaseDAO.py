@@ -47,7 +47,7 @@ class FilesDatabaseDAO:
             user_file_name=user_file_name,
             file_size=file_size
         )
-        logging.debug(f"File {user_file_name} created in {file_owner_id}/{user_file_path} in the Database.")
+        logging.debug(f"File {user_file_name} created in {file_owner_id}@{user_file_path} in the Database.")
 
     def delete_file(self, file_owner_id, user_file_path, user_file_name):
         FilesDB.delete().where(
