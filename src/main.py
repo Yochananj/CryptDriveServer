@@ -37,45 +37,65 @@ class ServerClass:
 
         self.pool = ThreadPoolExecutor(2*os.cpu_count())
 
-        self.server_listen()
+        self._server_listen()
 
+    def server_close(self):
+        self.server.close()
+        self.is_server_running = False
 
-    def server_listen(self):
+    def _server_listen(self):
         try:
             self.server.listen(100)
             logging.info(f"Server listening On: {self.host_addr}")
             while self.is_server_running:
                 client, client_addr = self.server.accept()
                 logging.info(f"\n\n\n\nClient Connected: {client_addr}")
-                self.pool.submit(self.begin_client_communication, client, client_addr)
+                self.pool.submit(self._begin_client_communication, client, client_addr)
         except KeyboardInterrupt:
             self.server_close()
         finally:
             self.server_close()
             logging.info("Server Closed.")
 
-
-    def begin_client_communication(self, client, client_addr):
+    def _begin_client_communication(self, client, client_addr):
         logging.info(f"Receiving Message From: {client_addr}")
         secure_communication_manager = SecureCommunicationManager(client, self.token_service, self.encryption_token_master_key)
         message = secure_communication_manager.receive_data().decode()
         logging.info(f"Message Received: {message}. Parsing Message...")
-        self.parse_message(message, secure_communication_manager)
+        self._parse_message(message, secure_communication_manager)
 
-    def parse_message(self, message, secure_communication_manager: SecureCommunicationManager):
-        client_token, data, verb = self.get_data_from_request(message)
+    def _parse_message(self, message, secure_communication_manager: SecureCommunicationManager):
+        client_token, data, verb = self._get_data_from_request(message)
 
         logging.debug(f"Verb: {verb}, Token: {client_token},\n Data: {data[0:len(data)]}")
 
-        client_token, is_token_valid, username = self.handle_token(client_token)
+        client_token, is_token_valid, username = self._handle_token(client_token)
 
-        needs_file_contents, response, response_data = self.handle_action(client_token, data, is_token_valid,
-                                                                          username, verb)
+        needs_file_contents, response, response_data = self._handle_action(client_token, data, is_token_valid,
+                                                                           username, verb)
 
-        self.handle_response(client_token, data, needs_file_contents, response, response_data,
-                             secure_communication_manager, username)
+        self._handle_response(client_token, data, needs_file_contents, response, response_data,
+                              secure_communication_manager, username)
 
-    def handle_token(self, client_token) -> Any:
+    def _handle_response(self, client_token, data, needs_file_contents, response, response_data,
+                         secure_communication_manager: SecureCommunicationManager, username):
+        self._log_response_details(response, response_data)
+
+        response = response.encode()
+
+        self._send_initial_response(response, response_data, secure_communication_manager)
+
+        self._receive_data_if_needed(client_token, data, needs_file_contents, secure_communication_manager, username)
+
+    def _get_data_from_request(self, message) -> Any:
+        message_parts = message.split(separator)
+        logging.debug(f"Message parts: {message_parts}")
+        verb = message_parts[0]
+        client_token = message_parts[1]
+        data = message_parts[2:]
+        return client_token, data, verb
+
+    def _handle_token(self, client_token) -> Any:
         is_token_valid = self.token_service.is_token_valid(client_token)
 
         username = ""
@@ -88,37 +108,19 @@ class ServerClass:
         logging.info(f"Is token valid: {is_token_valid}.")
         return client_token, is_token_valid, username
 
-    def get_data_from_request(self, message) -> Any:
-        message_parts = message.split(separator)
-        logging.debug(f"Message parts: {message_parts}")
-        verb = message_parts[0]
-        client_token = message_parts[1]
-        data = message_parts[2:]
-        return client_token, data, verb
-
-    def handle_response(self, client_token, data, needs_file_contents, response, response_data,
-                        secure_communication_manager: SecureCommunicationManager, username):
-        self.log_response_details(response, response_data)
-
-        response = response.encode()
-
-        self.send_initial_response(response, response_data, secure_communication_manager)
-
-        self.recieve_data_if_needed(client_token, data, needs_file_contents, secure_communication_manager, username)
-
-    def recieve_data_if_needed(self, client_token, data, needs_file_contents,
-                               secure_communication_manager: SecureCommunicationManager, username):
+    def _receive_data_if_needed(self, client_token, data, needs_file_contents,
+                                secure_communication_manager: SecureCommunicationManager, username):
         if needs_file_contents:
             logging.debug("Waiting for Data")
             data_received = secure_communication_manager.receive_data()
             if self.file_service.create_file(username, data[0], data[1], data_received):
                 secure_communication_manager.respond_to_client(
-                    self.write_message("SUCCESS", client_token, "FILE_CREATED").encode())
+                    self._write_message("SUCCESS", client_token, "FILE_CREATED").encode())
             else:
                 secure_communication_manager.respond_to_client(
-                    self.write_message("ERROR", client_token, "FILE_NOT_CREATED").encode())
+                    self._write_message("ERROR", client_token, "FILE_NOT_CREATED").encode())
 
-    def send_initial_response(self, response, response_data, secure_communication_manager: SecureCommunicationManager):
+    def _send_initial_response(self, response, response_data, secure_communication_manager: SecureCommunicationManager):
         if len(response_data) > 0:
             logging.debug("Adding data to response")
             if isinstance(response_data, str):
@@ -129,147 +131,147 @@ class ServerClass:
 
         secure_communication_manager.respond_to_client(response)
 
-    def log_response_details(self, response, response_data):
+    def _log_response_details(self, response, response_data):
         logging.debug(f"Response: {response}")
         logging.debug(f"Response Data: {response_data}")
         logging.debug(f"Response Data Length: {len(response_data)}, type: {type(response_data)}")
 
-    def handle_action(self, client_token, data, is_token_valid, username,
-                      verb) -> Any:
+    def _handle_action(self, client_token, data, is_token_valid, username,
+                       verb) -> Any:
         response = ""
         response_data = ""
         needs_file_contents = False
 
         match verb:
             case Verbs.SIGN_UP.value:
-                response = self.sign_up(client_token, data, response)
+                response = self._sign_up(client_token, data, response)
 
             case Verbs.LOG_IN.value:
-                response = self.login(client_token, data, response)
+                response = self._login(client_token, data, response)
 
             case Verbs.DOWNLOAD_FILE.value:
-                response, response_data = self.download_file(client_token, data, is_token_valid, response,
-                                                             response_data, username)
-
-            case Verbs.GET_ITEMS_LIST.value:
-                response, response_data = self.get_items_list(client_token, data, is_token_valid, response,
+                response, response_data = self._download_file(client_token, data, is_token_valid, response,
                                                               response_data, username)
 
+            case Verbs.GET_ITEMS_LIST.value:
+                response, response_data = self._get_items_list(client_token, data, is_token_valid, response,
+                                                               response_data, username)
+
             case Verbs.CREATE_FILE.value:
-                needs_file_contents, response = self.create_file(client_token, data, is_token_valid,
-                                                                 needs_file_contents, response, username)
+                needs_file_contents, response = self._create_file(client_token, data, is_token_valid,
+                                                                  needs_file_contents, response, username)
 
             case Verbs.DELETE_FILE.value:
-                response = self.delete_file(client_token, data, is_token_valid, response, username)
+                response = self._delete_file(client_token, data, is_token_valid, response, username)
 
             case Verbs.CREATE_DIR.value:
-                response = self.create_dir(client_token, data, is_token_valid, response, username)
+                response = self._create_dir(client_token, data, is_token_valid, response, username)
 
             case Verbs.DELETE_DIR.value:
-                response = self.delete_dir(client_token, data, is_token_valid, response, username)
+                response = self._delete_dir(client_token, data, is_token_valid, response, username)
 
             case Verbs.RENAME_FILE.value:
-                response = self.rename_file(client_token, data, is_token_valid, response, username)
+                response = self._rename_file(client_token, data, is_token_valid, response, username)
 
             case Verbs.RENAME_DIR.value:
-                response = self.rename_dir(client_token, data, is_token_valid, response, username)
+                response = self._rename_dir(client_token, data, is_token_valid, response, username)
 
             case Verbs.MOVE_FILE.value:
-                response = self.move_file(client_token, data, is_token_valid, response, username)
+                response = self._move_file(client_token, data, is_token_valid, response, username)
 
             case Verbs.MOVE_DIR.value:
-                response = self.move_dir(client_token, data, is_token_valid, response, username)
+                response = self._move_dir(client_token, data, is_token_valid, response, username)
 
             case _:
                 logging.debug("Invalid Verb")
-                response = self.write_message("ERROR", client_token, "INVALID_VERB")
+                response = self._write_message("ERROR", client_token, "INVALID_VERB")
         return needs_file_contents, response, response_data
 
-    def move_dir(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _move_dir(self, client_token, data, is_token_valid, response, username) -> Any:
         if is_token_valid:
             if self.file_service.move_dir(username, data[0], data[1], data[2]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
+                response = self._write_message("ERROR", client_token, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def move_file(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _move_file(self, client_token, data, is_token_valid, response, username) -> Any:
         if is_token_valid:
             if self.file_service.move_file(username, data[0], data[1], data[2]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
+                response = self._write_message("ERROR", client_token, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def rename_dir(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _rename_dir(self, client_token, data, is_token_valid, response, username) -> Any:
         if is_token_valid:
             if self.file_service.rename_dir(username, data[0], data[1], data[2]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
+                response = self._write_message("ERROR", client_token, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def rename_file(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _rename_file(self, client_token, data, is_token_valid, response, username) -> Any:
         if is_token_valid:
             if self.file_service.rename_file(username, data[0], data[1], data[2]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
+                response = self._write_message("ERROR", client_token, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def delete_dir(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _delete_dir(self, client_token, data, is_token_valid, response, username) -> Any:
         logging.debug("verb = DELETE_DIR")
         if is_token_valid:
             if self.file_service.delete_dir(username, data[0], data[1]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "DIR_NOT_FOUND")
+                response = self._write_message("ERROR", client_token, "DIR_NOT_FOUND")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def create_dir(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _create_dir(self, client_token, data, is_token_valid, response, username) -> Any:
         if is_token_valid:
             if self.file_service.create_dir(username, data[0], data[1]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "DIR_EXISTS")
+                response = self._write_message("ERROR", client_token, "DIR_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def delete_file(self, client_token, data, is_token_valid, response, username) -> Any:
+    def _delete_file(self, client_token, data, is_token_valid, response, username) -> Any:
         logging.debug("verb = DELETE_FILE")
         if is_token_valid:
             if self.file_service.delete_file(username, data[0], data[1]):
-                response = self.write_message("SUCCESS", client_token)
+                response = self._write_message("SUCCESS", client_token)
             else:
-                response = self.write_message("ERROR", client_token, "FILE_NOT_FOUND")
+                response = self._write_message("ERROR", client_token, "FILE_NOT_FOUND")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response
 
-    def create_file(self, client_token, data, is_token_valid, needs_file_contents, response, username) -> Any:
+    def _create_file(self, client_token, data, is_token_valid, needs_file_contents, response, username) -> Any:
         logging.debug("verb = CREATE_FILE")
         if is_token_valid:
             if self.file_service.can_create_file(username, data[0], data[1]):
-                response = self.write_message("SUCCESS", client_token, "READY_FOR_DATA")
+                response = self._write_message("SUCCESS", client_token, "READY_FOR_DATA")
                 needs_file_contents = True
             else:
-                response = self.write_message("ERROR", client_token, "FILE_EXISTS")
+                response = self._write_message("ERROR", client_token, "FILE_EXISTS")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return needs_file_contents, response
 
-    def get_items_list(self, client_token, data, is_token_valid, response, response_data, username) -> Any:
+    def _get_items_list(self, client_token, data, is_token_valid, response, response_data, username) -> Any:
         logging.debug("verb = GET_FILES_LIST")
         if is_token_valid:
             dirs = self.file_service.get_dirs_list_for_path(username, data[0])
@@ -279,54 +281,48 @@ class ServerClass:
             dirs_dumps = json.dumps([directory.__dict__ for directory in dirs])
             files_dumps = json.dumps([file_obj.__dict__ for file_obj in files])
             logging.debug(f"Response data: \n Dirs: {dirs_dumps} \n Files: {files_dumps}")
-            response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
+            response = self._write_message("SUCCESS", client_token, "SENDING_DATA")
             response_data = json.dumps(Items(dirs_dumps, files_dumps).__dict__)
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response, response_data
 
-    def download_file(self, client_token, data, is_token_valid, response, response_data, username) -> Any:
+    def _download_file(self, client_token, data, is_token_valid, response, response_data, username) -> Any:
         logging.debug("verb = DOWNLOAD_FILE")
         if is_token_valid:
             response_data = self.file_service.get_file_contents(username, data[0], data[1])
-            response = self.write_message("SUCCESS", client_token, "SENDING_DATA")
+            response = self._write_message("SUCCESS", client_token, "SENDING_DATA")
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_TOKEN")
+            response = self._write_message("ERROR", client_token, "INVALID_TOKEN")
         return response, response_data
 
-    def login(self, client_token, data, response) -> Any:
+    def _login(self, client_token, data, response) -> Any:
         logging.debug("verb = LOG_IN")
         if self.user_service.login(data[0], data[1]):
-            response = self.write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
+            response = self._write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
         else:
-            response = self.write_message("ERROR", client_token, "INVALID_CREDENTIALS")
+            response = self._write_message("ERROR", client_token, "INVALID_CREDENTIALS")
         return response
 
-    def sign_up(self, client_token, data, response) -> Any:
+    def _sign_up(self, client_token, data, response) -> Any:
         logging.debug("verb = SIGN_UP")
         if self.user_service.create_user(data[0], data[1]):
             logging.debug(f"Created User: {data[0]}, with password hash: {data[1]}")
             self.file_service.create_dir(data[0], None, "/")
             logging.debug(f"Created root directory for user: {data[0]}")
-            response = self.write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
+            response = self._write_message("SUCCESS", self.token_service.create_login_token(username=data[0]))
         else:
             logging.debug(f"User {data[0]} already exists.")
-            response = self.write_message("ERROR", client_token, "USER_EXISTS")
+            response = self._write_message("ERROR", client_token, "USER_EXISTS")
         return response
 
-    def write_message(self, success, token, status_code=None):
+    def _write_message(self, success, token, status_code=None):
         logging.debug(f"Writing Message: Success?: {success}")
         message = success + separator + token
         if status_code:
             message += separator + status_code
         logging.debug(f"Final Message: {message}")
         return message
-
-    def server_close(self):
-        self.server.close()
-        self.is_server_running = False
-
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(threadName)-12s | %(levelname)-5s | %(message)s')
