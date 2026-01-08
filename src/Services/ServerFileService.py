@@ -12,17 +12,17 @@ class FileService:
         self.files_disk_dao = FilesDiskDAO()
         self.users_service = users_service
 
-    def create_file(self, file_owner, user_file_path, user_file_name, file_contents):
+    def create_file(self, file_owner, user_file_path, user_file_name, encrypted_file_contents, file_nonce):
         file_owner_id = self.users_service.get_user_id(file_owner)
         logging.debug(f"Creating file for {file_owner}@{user_file_path if user_file_path != "/" else ""}/{user_file_name}.")
         if self.can_create_file(file_owner, user_file_path, user_file_name):
             # write to disk
-            file_uuid = self._file_uuid_generator()
-            self.files_disk_dao.write_file_to_disk(file_owner_id, file_uuid, file_contents)
+            file_uuid = self._generate_file_uuid()
+            self.files_disk_dao.write_file_to_disk(file_owner_id, file_uuid, encrypted_file_contents)
 
             # create in database
             file_size = self.files_disk_dao.get_file_size_on_disk(file_owner_id, file_uuid)
-            self.files_database_dao.create_file(file_owner_id, user_file_path, file_uuid, user_file_name, file_size)
+            self.files_database_dao.create_file(file_owner_id, user_file_path, file_uuid, user_file_name, file_size, file_nonce)
 
             logging.debug(f"File {user_file_name} created.")
             return True
@@ -151,14 +151,16 @@ class FileService:
             logging.error("Directory cannot be moved. Either it does not exist or a directory with the new name already exists.")
             return False
 
-    def get_file_contents(self, file_owner, user_file_path, file_name):
+    def get_file_contents_and_nonce(self, file_owner, user_file_path, file_name):
         logging.debug(f"Getting file contents for {file_owner}@{user_file_path}/{file_name}.")
         file_owner_id = self.users_service.get_user_id(file_owner)
         logging.debug(f"{file_owner} user id: {file_owner_id} \n Getting file uuid...")
         file_uuid = self.files_database_dao.get_file_uuid(file_owner_id, user_file_path, file_name)
         logging.debug(f"File uuid: {file_uuid}\n Getting file contents from disk...")
         file_contents = self.files_disk_dao.get_file_contents(file_owner_id, file_uuid)
-        return file_contents
+
+        file_nonce = self.files_database_dao.get_file_nonce(file_owner_id, user_file_path, file_name)
+        return file_contents, file_nonce
 
 
     def get_dirs_list_for_path(self, file_owner, path):
@@ -187,7 +189,7 @@ class FileService:
         logging.debug(f"File tuples list: {[file.__dict__ for file in files_list]}")
         return files_list
 
-    def _file_uuid_generator(self):
+    def _generate_file_uuid(self):
         return uuid.uuid4().hex
 
     def can_create_file(self, file_owner, user_file_path, user_file_name):
@@ -217,18 +219,5 @@ class Items:
     def __init__(self, dirs_dumps, files_dumps):
         self.dirs_dumps = dirs_dumps
         self.files_dumps = files_dumps
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-
-    user_service = UsersService()
-    file_service = FileService(user_service)
-    temp_username = str(uuid.uuid4())
-    temp_filename = str(uuid.uuid4())
-    file_service.users_service.create_user(temp_username, "123456789")
-    file_service.create_file(temp_username, "/a/b/c/d/", temp_filename, b"hello world")
-    print(file_service.get_file_contents(temp_username,  "/a/b/c/d/", temp_filename))
-    file_service.delete_file(temp_username, "/a/b/c/d/", temp_filename)
-
 
 

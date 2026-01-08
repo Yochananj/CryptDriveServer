@@ -11,6 +11,9 @@ class UsersDB(peewee.Model):
     user_id = peewee.AutoField()
     username = peewee.CharField()
     password_hash = peewee.CharField()
+    derived_key_salt = peewee.BlobField()
+    encrypted_master_key = peewee.BlobField()
+    encrypted_master_key_nonce = peewee.BlobField()
 
     class Meta:
         database = users_db
@@ -22,8 +25,14 @@ class UsersDatabaseDAO:
         logging.debug(f"Connected to the Database at {db_path}.")
         UsersDB.create_table([UsersDB])
 
-    def create_user(self, username, password_hash):
-        UsersDB.create(username=username, password_hash=password_hash)
+    def create_user(self, username, password_hash, derived_key_salt, encrypted_file_master_key, encrypted_master_key_nonce):
+        UsersDB.create(
+            username=username,
+            password_hash=password_hash,
+            derived_key_salt=derived_key_salt,
+            encrypted_master_key=encrypted_file_master_key,
+            encrypted_master_key_nonce=encrypted_master_key_nonce
+        )
         logging.debug(f"User {username} created in the Database (ID: {self.get_user_id(username)})")
 
     def delete_user(self, username):
@@ -31,22 +40,20 @@ class UsersDatabaseDAO:
         logging.debug(f"User {username} deleted from the Database.")
 
     def get_user_id(self, username):
-        user_id = UsersDB.select().where(UsersDB.username == username).get().user_id
-        return user_id
+        return UsersDB.select().where(UsersDB.username == username).get().user_id
 
-    def check_username_against_password_hash(self, username, password):
-        return UsersDB.select().where(UsersDB.username == username).get().password_hash == password
+    def check_username_against_password_hash(self, username, password_hash):
+        return UsersDB.select().where(UsersDB.username == username).get().password_hash == password_hash
 
     def does_user_exist(self, username):
         return UsersDB.select().where(UsersDB.username == username).exists()
 
-    def close_db(self):
-        users_db.close()
+    def get_derived_key_salt(self, username):
+        return UsersDB.select().where(UsersDB.username == username).get().derived_key_salt
 
+    def get_encrypted_master_key(self, username):
+        return UsersDB.select().where(UsersDB.username == username).get().encrypted_master_key
 
+    def get_encrypted_master_key_nonce(self, username):
+        return UsersDB.select().where(UsersDB.username == username).get().encrypted_master_key_nonce
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-
-    users_dao = UsersDatabaseDAO()
-    users_dao.create_user("yocha", "123123123123")

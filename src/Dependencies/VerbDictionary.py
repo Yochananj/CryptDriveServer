@@ -1,9 +1,9 @@
 import enum
 
 class Verbs(enum.Enum):
-    SIGN_UP = "SIGN_UP" # [username, password_hash]
+    SIGN_UP = "SIGN_UP" # [username, password_hash, salt, encrypted_file_master_key, nonce]
     LOG_IN = "LOG_IN" # [username, password_hash]
-    CREATE_FILE = "CREATE_FILE" # [file_path, file_name] [file_contents]
+    CREATE_FILE = "CREATE_FILE" # [file_path, file_name, nonce] [file_contents]
     CREATE_DIR = "CREATE_DIR" # [path, dir_name]
     DOWNLOAD_FILE = "DOWNLOAD_FILE" # [file_path, file_name]
     DELETE_FILE = "DELETE_FILE" # [file_path, file_name]

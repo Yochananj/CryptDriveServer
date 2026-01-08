@@ -15,6 +15,7 @@ class FilesDB(peewee.Model):
     user_file_name = peewee.CharField()
     file_uuid = peewee.CharField(null=True)
     file_size = peewee.IntegerField(default=0)
+    file_nonce = peewee.BlobField(null=True)
     is_directory = peewee.BooleanField(default=False)
 
     class Meta:
@@ -39,13 +40,14 @@ class FilesDatabaseDAO:
         logging.debug(f"Connected to the Database at {db_path}.")
         files_db.create_tables([FilesDB])
 
-    def create_file(self, file_owner_id, user_file_path, file_uuid, user_file_name, file_size):
+    def create_file(self, file_owner_id, user_file_path, file_uuid, user_file_name, file_size, file_nonce):
         FilesDB.create(
             file_owner_id=file_owner_id,
             user_file_path=user_file_path,
             file_uuid=file_uuid,
             user_file_name=user_file_name,
-            file_size=file_size
+            file_size=file_size,
+            file_nonce=file_nonce
         )
         logging.debug(f"File {user_file_name} created in {file_owner_id}@{user_file_path} in the Database.")
 
@@ -134,6 +136,14 @@ class FilesDatabaseDAO:
             FilesDB.user_file_name == old_user_file_name,
             FilesDB.is_directory == True
         ).execute()
+
+    def get_file_nonce(self, file_owner_id, user_file_path, user_file_name):
+        return FilesDB.select().where(
+            FilesDB.file_owner_id == file_owner_id,
+            FilesDB.user_file_path == user_file_path,
+            FilesDB.user_file_name == user_file_name,
+            FilesDB.is_directory == False
+        ).get().file_nonce
 
 
     def close_db(self):
