@@ -57,3 +57,16 @@ class UsersDatabaseDAO:
     def get_encrypted_master_key_nonce(self, username):
         return UsersDB.select().where(UsersDB.username == username).get().encrypted_master_key_nonce
 
+    def change_username(self, user_id, new_username):
+        UsersDB.update(username=new_username).where(UsersDB.user_id == user_id).execute()
+
+    def update_user_credentials(self, user_id, new_password_hash, new_derived_key_salt, new_encrypted_master_key, new_encrypted_master_key_nonce):
+        UsersDB.update(
+            password_hash=new_password_hash,
+            derived_key_salt=new_derived_key_salt,
+            encrypted_master_key=new_encrypted_master_key,
+            encrypted_master_key_nonce=new_encrypted_master_key_nonce
+        ).where(
+            UsersDB.user_id == user_id
+        ).execute()
+

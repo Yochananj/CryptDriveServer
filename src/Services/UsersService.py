@@ -13,7 +13,6 @@ class UsersService:
             logging.debug("User does not exist. Creating...")
             self.dao.create_user(username, password_hash, derived_key_salt, encrypted_file_master_key, encrypted_master_key_nonce)
             logging.debug(f"User {username} created.")
-
             return True
         else:
             logging.debug(f"User {username} already exists.")
@@ -26,6 +25,14 @@ class UsersService:
         else:
             return False
 
+    def change_username(self, username, new_username) -> bool:
+        user_id = self.dao.get_user_id(username)
+        if not self.dao.does_user_exist(new_username):
+            self.dao.change_username(user_id, new_username)
+            return True
+        else:
+            return False
+
     def get_user_derived_key_salt_and_encrypted_master_key_and_nonce(self, username) -> tuple[bytes, bytes, bytes]:
         return self.dao.get_derived_key_salt(username), self.dao.get_encrypted_master_key(username), self.dao.get_encrypted_master_key_nonce(username)
 
@@ -35,3 +42,7 @@ class UsersService:
 
     def get_user_id(self, username):
         return self.dao.get_user_id(username)
+
+    def update_user_credentials(self, username, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce):
+        user_id = self.dao.get_user_id(username)
+        self.dao.update_user_credentials(user_id, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)

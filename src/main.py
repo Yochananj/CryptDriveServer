@@ -29,6 +29,7 @@ class ServerClass:
         logging.debug(f"Generated token master key: {self.encryption_token_master_key}")
 
         self.host_addr = host_addr
+
         try:
             self.server.bind(self.host_addr)
             self.is_server_running = True
@@ -187,6 +188,12 @@ class ServerClass:
             case Verbs.MOVE_DIR.value:
                 response = self._move_dir(client_token, data, is_token_valid, username)
 
+            case Verbs.CHANGE_USERNAME.value:
+                response = self._change_username(client_token, data, is_token_valid, username)
+
+            case Verbs.CHANGE_PASSWORD.value:
+                response = self._change_password(client_token, data, is_token_valid, username)
+
             case _:
                 logging.debug("Invalid Verb")
                 response = self._write_message("ERROR", client_token, "INVALID_VERB")
@@ -335,6 +342,28 @@ class ServerClass:
             response = self._write_message("ERROR", client_token, "USER_EXISTS")
         return response
 
+    def _change_username(self, client_token, data, is_token_valid, username):
+        logging.debug("verb = CHANGE_USERNAME")
+        new_username = data[0]
+        if is_token_valid:
+            logging.debug(f"Changing username from {username} to {new_username}")
+            if self.users_service.change_username(username, new_username):
+                return self._write_message("SUCCESS", self.token_service.create_login_token(new_username))
+            else:
+                return self._write_message("ERROR", client_token, "USERNAME_ALREADY_TAKEN")
+        else:
+            return self._write_message("ERROR", client_token, "INVALID_TOKEN")
+
+    def _change_password(self, client_token, data, is_token_valid, username):
+        logging.debug("verb = CHANGE_PASSWORD")
+        new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce = data[0:5]
+        if is_token_valid:
+            logging.debug(f"Changing password for user: {username}")
+            self.users_service.update_user_credentials(username, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)
+            return self._write_message("SUCCESS", self.token_service.create_login_token(username))
+        else:
+            return self._write_message("ERROR", client_token, "INVALID_TOKEN")
+
     def _write_message(self, success, token, status_code: str =None):
         logging.debug(f"Writing Message: Success?: {success}")
         message = success + separator + token
@@ -342,6 +371,7 @@ class ServerClass:
             message += separator + status_code
         logging.debug(f"Final Message: {message if len(message) < 1000 else f'{message[:1000]}...'}")
         return message
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s | %(threadName)-12s | %(levelname)-5s | %(message)s')
