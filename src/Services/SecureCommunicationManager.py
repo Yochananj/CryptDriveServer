@@ -17,7 +17,43 @@ from Services.TokenService import TokenService
 
 
 class SecureCommunicationManager:
+    """
+    Manages secure communication between a client and server using encryption and token-based
+    authentication mechanisms. This class handles encryption key generation, data encryption,
+    and data decryption, as well as validation and management of authentication tokens.
+
+    The class is primarily designed to establish and maintain a secure communication channel
+    by performing necessary encryption handshakes and data exchange in a secure manner.
+
+    :ivar client: The client socket used for communication.
+    :type client: socket.socket
+    :ivar token_service: The service used to manage encryption tokens.
+    :type token_service: TokenService
+    :ivar master_aesgcm: The AES-GCM object initialized with the master key for encryption operations.
+    :type master_aesgcm: AESGCM
+    :ivar key: The symmetric encryption key used for encrypting and decrypting client data.
+    :type key: bytes
+    :ivar aesgcm: The AES-GCM object initialized with the symmetric encryption key.
+    :type aesgcm: AESGCM
+    :ivar token: The current authentication token in use for the communication session.
+    :type token: bytes
+    """
     def __init__(self, client: socket.socket, token_service: TokenService, master_key):
+        """
+        Initializes the instance of the class with required dependencies and cryptographic setup.
+
+        This constructor sets up the required dependencies including a client for communication,
+        a token service for handling authentication tokens, and cryptographic configurations
+        using a master key for AES-GCM encryption. It does not initialize the derived key or
+        AES-GCM cryptographic handler for derived keys at this stage, and ensures the token is
+        initialized to an empty byte sequence.
+
+        :param client: The socket client instance used for communication.
+        :type client: socket.socket
+        :param token_service: The service handling authentication tokens.
+        :type token_service: TokenService
+        :param master_key: The master key used for AES-GCM encryption setup.
+        """
         self.client: socket.socket = client
         self.token_service = token_service
         self.master_aesgcm: AESGCM = AESGCM(master_key)
@@ -26,6 +62,22 @@ class SecureCommunicationManager:
         self.token = b""
 
     def receive_data(self):
+        """
+        Handles the receiving of data over a client-server connection and processes the
+        received data based on encryption-handshaking protocols.
+
+        This method is responsible for managing a two-way encrypted communication
+        between a client and server. It handles initial encryption handshaking,
+        decrypting previously encrypted messages, and validation of encryption tokens.
+
+        :raises SystemExit: If invalid token scenarios and retries fail.
+        :raises ValueError: If the received data cannot be split as expected.
+        :raises CryptoError: Raised during failures in encryption or decryption processes.
+
+        :return: The decrypted message if applicable, or an error message string if an
+            unrecognized flag or invalid data is received.
+        :rtype: str or bytes
+        """
         logging.debug("Initializing data receiving")
         received_data = b""
         counter = 0
@@ -99,6 +151,14 @@ class SecureCommunicationManager:
                 return "ERROR"
 
     def respond_to_client(self, message: bytes):
+        """
+        Responds to a client by sending an encrypted message. If the current token needs refreshing, a new
+        encryption token is generated before sending the message.
+
+        :param message: The message to be sent to the client, provided as a byte sequence.
+        :type message: bytes
+        :return: None
+        """
         if self.token_service.token_needs_refreshing(self.token):
             token_key_nonce = urandom(12)
             self.token = self.token_service.create_encryption_token(encrypted_key=self.master_aesgcm.encrypt(token_key_nonce, self.key, None), nonce=token_key_nonce)
@@ -114,6 +174,23 @@ class SecureCommunicationManager:
             encryption_flag: bytes = resume_flag,
             encrypt_message: bool = True
             ) -> bytes:
+        """
+        Encrypts the provided message using AES-GCM encryption and appends metadata such
+        as a token, nonce, and encryption flags to the resulting message. If encryption
+        is disabled or the message is empty, the original unencrypted message is returned
+        with metadata.
+
+        :param message: The message to be encrypted as raw bytes.
+        :type message: bytes
+        :param token: A unique identifier added to the message for context or authentication.
+        :type token: bytes
+        :param encryption_flag: A flag indicating the start of an encrypted message.
+        :type encryption_flag: bytes
+        :param encrypt_message: Indicates if the message should be encrypted. Defaults to True.
+        :type encrypt_message: bool
+        :return: The final encrypted message or the original message with metadata.
+        :rtype: bytes
+        """
         nonce = urandom(12)
         encrypted_message = self.aesgcm.encrypt(nonce, message, None) if message != b"" and encrypt_message and self.aesgcm is not None else message
         message = encryption_flag + encryption_separator + token + encryption_separator + nonce + encryption_separator + encrypted_message + end_flag
@@ -126,6 +203,22 @@ class SecureCommunicationManager:
             token: bytes,
             encryption_flag: bytes = resume_flag
             ) -> bytes:
+        """
+        Writes non-encrypted data by combining several byte components and returns the resulting message.
+
+        The method constructs a binary message by concatenating the encryption flag, a token, and the
+        provided message, separated by predefined encryption separators and finalized with an end flag.
+        The constructed message is typically used for non-encrypted communication or data packaging.
+
+        :param message:
+            The primary binary message to be packaged.
+        :param token:
+            A binary token used for identification or authentication within the constructed message.
+        :param encryption_flag:
+            A binary flag indicating the encryption status of the data. Defaults to `resume_flag`.
+        :return:
+            A binary message constructed by combining the input parameters and separators.
+        """
         message_to_return = bytes(encryption_flag) + bytes(encryption_separator) + bytes(token) + bytes(encryption_separator) + bytes(encryption_separator) + bytes(message) + bytes(end_flag)
         logging.debug(f"Non-encrypted message: {message_to_return}")
         return message_to_return
