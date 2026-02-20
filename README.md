@@ -27,14 +27,16 @@ for file storage and management with a focus on security and privacy.
 
 ### Windows (PowerShell)
 1. Download and extract the zip file containing the repository.
-2. Execute the PowerShell script:
+2. Open the terminal and navigate to the extracted folder.
+3. Run the PowerShell script:
 ```powershell
 install.ps1
 ```
 
 ### MacOS (Shell Script)
 1. Download and extract the zip file containing the repository.
-2. Open the terminal in the project directory and execute this shell script:
+2. Open the terminal and navigate to the extracted folder.
+3. Execute this shell script:
 ```shell
 chmod +x install.sh
 ./install.sh
