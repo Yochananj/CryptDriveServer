@@ -1,0 +1,4 @@
+platformdirs
+peewee
+pyjwt
+cryptography
