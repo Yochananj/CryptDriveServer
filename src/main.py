@@ -11,8 +11,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
 from Services.SecureCommunicationManager import SecureCommunicationManager
-from Services.ServerFileService import FileService, Items
-from Services.TokenService import TokenService
+from Services.FilesService import FilesService, Items
+from Services.TokensService import TokensService
 from Services.UsersService import UsersService
 
 
@@ -35,10 +35,10 @@ class ServerClass:
     :type users_service: UsersService
     :ivar file_service: A service for managing file-related operations, such as
         file creation, deletion, and retrieval.
-    :type file_service: FileService
+    :type file_service: FilesService
     :ivar token_service: A service for handling token-based authentication and
         validation.
-    :type token_service: TokenService
+    :type token_service: TokensService
     :ivar encryption_token_master_key: The master encryption key for managing
         secured tokens.
     :type encryption_token_master_key: bytes
@@ -61,9 +61,9 @@ class ServerClass:
         self.is_server_running = False
 
         self.users_service = UsersService()
-        self.file_service = FileService(self.users_service)
+        self.file_service = FilesService(self.users_service)
 
-        self.token_service = TokenService()
+        self.token_service = TokensService()
         self.encryption_token_master_key = AESGCM.generate_key(bit_length=256)
         logging.debug(f"Generated token master key: {self.encryption_token_master_key}")
 
@@ -73,7 +73,7 @@ class ServerClass:
             self.server.bind(self.host_addr)
             self.is_server_running = True
         except OSError as exception:
-            logging.error(f"\n\n\nError starting server: {exception}")
+            logging.error(f"Error starting server: {exception}")
             self.server_close()
             logging.info("Server Closed.")
             return
@@ -660,20 +660,22 @@ class ServerClass:
 
     def _login(self, client_token, data) -> Any:
         """
-        Authenticates a user by verifying the provided credentials, generating a login token,
-        and retrieving user-related encrypted keys if the credentials are valid. If the
-        credentials are not valid, it returns an error message.
+        Authenticates a user with provided credentials and generates a login session token
+        if the credentials are valid. Retrieves user-specific encryption keys upon successful
+        login and constructs a response message accordingly.
 
-        :param client_token: A token that represents the current client session.
-        :param data: A list containing the username and corresponding password hash of the
-            user attempting to log in.
-        :return: A response message which includes the status of the login operation,
-            a generated login token in case of successful authentication, and additional
-            encrypted user keys. In case of failure, an error message is returned.
+        :param client_token: The client session token associated with the current operation.
+        :param data: A list containing the username and password in order, where:
+                     - data[0] is the username (str)
+                     - data[1] is the password (str)
+        :return: A response message indicating the result of the login operation. The message
+                 includes user-specific data upon successful login or an error message if the
+                 login attempt fails.
+        :rtype: Any
         """
         logging.debug("verb = LOG_IN")
-        username, password_hash = data[0], data[1]
-        if self.users_service.login(username, password_hash):
+        username, password = data[0], data[1]
+        if self.users_service.login(username, password):
             derived_key_salt, encrypted_master_key, encrypted_master_key_nonce = self.users_service.get_user_derived_key_salt_and_encrypted_master_key_and_nonce(username)
             logging.debug(f"Derived Key Salt: {derived_key_salt},\nEncrypted Master Key: {encrypted_master_key},\nEncrypted Master Key Nonce: {encrypted_master_key_nonce}")
             user_keys_data_string = json.dumps(
@@ -689,25 +691,19 @@ class ServerClass:
 
     def _sign_up(self, client_token, data) -> Any:
         """
-        Handles the logic for signing up a new user. This method processes the provided
-        user data, attempts to create a new user, and initializes the root directory
-        for the user. If the user already exists, an error message is returned.
+        Handles the sign-up process by creating a new user, along with their root directory,
+        and generating a login token. If the user already exists, an error response is returned.
 
-        :param client_token: The token identifying the client making the request.
-        :type client_token: str
-        :param data: A list containing user registration details. It includes the
-            username, hashed password, salt, encrypted file master key, and a nonce
-            for encryption.
-        :type data: list
-        :return: A response message indicating the result of the sign-up operation.
-            Contains a "SUCCESS" message with a login token if the user is created,
-            or an "ERROR" message if the user already exists.
-        :rtype: Any
+        :param client_token: A unique client session token required for processing the request.
+        :param data: A list containing details required for creating a user. The list elements
+            include the username, password, salt, encrypted file master key, and nonce.
+        :return: A dictionary or object representing the response, containing the status of
+            the operation ("SUCCESS" or "ERROR") and relevant additional data.
         """
         logging.debug("verb = SIGN_UP")
-        username, password_hash, salt, encrypted_file_master_key, nonce = data[0:6]
-        if self.users_service.create_user(username, password_hash, salt, encrypted_file_master_key, nonce):
-            logging.debug(f"Created User: {username}, with password hash: {password_hash}")
+        username, password, salt, encrypted_file_master_key, nonce = data[0:6]
+        if self.users_service.create_user(username, password, salt, encrypted_file_master_key, nonce):
+            logging.debug(f"Created User: {username}, with password: {password}")
             self.file_service.create_dir(username, None, "/")
             logging.debug(f"Created root directory for user: {username}")
             response = self._write_message("SUCCESS", self.token_service.create_login_token(username))
@@ -746,33 +742,32 @@ class ServerClass:
 
     def _change_password(self, client_token, data, is_token_valid, username):
         """
-        Changes the password for the specified user if the token validation is successful.
+        Updates the password for a user if the provided token is valid. It makes use
+        of the supplied new password data to update user credentials and returns a
+        success message along with a new login token. If the token is invalid, an
+        error message is returned with the original client token.
 
-        This method updates the user's credentials with a new password hash, salt,
-        encrypted file master key, and nonce. If the provided token is valid, the method
-        logs the operation, updates the user credentials in the `users_service`, and
-        returns a success message along with a newly created login token. If the token is
-        invalid, it returns an error message indicating an invalid token.
-
-        :param client_token: The token associated with the client that requested
-            the password change.
+        :param client_token: Token provided by the client, used for identification
+            and validation.
         :type client_token: str
-        :param data: A sequence containing the following new credentials: password hash,
-            salt, encrypted file master key, and nonce (in that order).
-        :type data: Sequence
-        :param is_token_valid: Indicates if the provided token is valid for the operation.
+        :param data: A list containing new password credentials. It consists of the
+            new password, salt, encrypted file master key, and nonce for updating
+            the user's credentials.
+        :type data: list
+        :param is_token_valid: A boolean flag indicating whether the provided token
+            is valid or not.
         :type is_token_valid: bool
-        :param username: The username of the account for which the password is being changed.
+        :param username: The username of the user whose password needs to be updated.
         :type username: str
-        :return: A success message with a new login token if the token is valid, or an
-            error message if the token is invalid.
-        :rtype: str
+        :return: Returns a success message with a new login token if the token is
+            valid. Otherwise, returns an error message with the original client token.
+        :rtype: dict
         """
         logging.debug("verb = CHANGE_PASSWORD")
-        new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce = data[0:5]
+        new_password, new_salt, new_encrypted_file_master_key, new_nonce = data[0:5]
         if is_token_valid:
             logging.debug(f"Changing password for user: {username}")
-            self.users_service.update_user_credentials(username, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)
+            self.users_service.update_user_credentials(username, new_password, new_salt, new_encrypted_file_master_key, new_nonce)
             return self._write_message("SUCCESS", self.token_service.create_login_token(username))
         else:
             return self._write_message("ERROR", client_token, "INVALID_TOKEN")

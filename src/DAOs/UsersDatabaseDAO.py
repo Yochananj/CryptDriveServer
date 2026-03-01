@@ -140,19 +140,16 @@ class UsersDatabaseDAO:
         """
         return UsersDB.select().where(UsersDB.username == username).get().user_id
 
-    def check_username_against_password_hash(self, username, password_hash):
+    def get_password_hash_for_username(self, username):
         """
-        Checks if the provided password hash matches the stored password hash for the
-        given username in the database.
+        Retrieves the password hash associated with the provided username from the database.
 
-        :param username: Username to look up in the database
+        :param username: The username for which the password hash is retrieved.
         :type username: str
-        :param password_hash: Hash of the password to compare with the stored value
-        :type password_hash: str
-        :return: True if the password hash matches the stored hash, False otherwise
-        :rtype: bool
+        :return: The password hash of the specified username.
+        :rtype: str
         """
-        return UsersDB.select().where(UsersDB.username == username).get().password_hash == password_hash
+        return UsersDB.select().where(UsersDB.username == username).get().password_hash
 
     def does_user_exist(self, username):
         """

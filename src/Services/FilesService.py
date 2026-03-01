@@ -6,7 +6,7 @@ from DAOs.FilesDiskDAO import FilesDiskDAO
 from Services.UsersService import UsersService
 
 
-class FileService:
+class FilesService:
     """
     Manages file system operations including creation, deletion, renaming, and moving
     of files and directories. This class integrates with database and disk storage

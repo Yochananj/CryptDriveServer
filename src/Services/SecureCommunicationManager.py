@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from Dependencies import Constants
 from Dependencies.Constants import buffer_size, end_flag, encryption_separator, resume_flag, init_flag
-from Services.TokenService import TokenService
+from Services.TokensService import TokensService
 
 
 class SecureCommunicationManager:
@@ -28,7 +28,7 @@ class SecureCommunicationManager:
     :ivar client: The client socket used for communication.
     :type client: socket.socket
     :ivar token_service: The service used to manage encryption tokens.
-    :type token_service: TokenService
+    :type token_service: TokensService
     :ivar master_aesgcm: The AES-GCM object initialized with the master key for encryption operations.
     :type master_aesgcm: AESGCM
     :ivar key: The symmetric encryption key used for encrypting and decrypting client data.
@@ -38,7 +38,7 @@ class SecureCommunicationManager:
     :ivar token: The current authentication token in use for the communication session.
     :type token: bytes
     """
-    def __init__(self, client: socket.socket, token_service: TokenService, master_key):
+    def __init__(self, client: socket.socket, token_service: TokensService, master_key):
         """
         Initializes the instance of the class with required dependencies and cryptographic setup.
 
@@ -51,7 +51,7 @@ class SecureCommunicationManager:
         :param client: The socket client instance used for communication.
         :type client: socket.socket
         :param token_service: The service handling authentication tokens.
-        :type token_service: TokenService
+        :type token_service: TokensService
         :param master_key: The master key used for AES-GCM encryption setup.
         """
         self.client: socket.socket = client

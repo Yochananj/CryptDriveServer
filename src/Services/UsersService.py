@@ -1,6 +1,7 @@
 import logging
 
 from DAOs.UsersDatabaseDAO import UsersDatabaseDAO
+from Services.PasswordHashingManager import hash_password, verify_password
 
 
 class UsersService:
@@ -22,30 +23,33 @@ class UsersService:
         """
         self.dao = UsersDatabaseDAO()
 
-    def create_user(self, username, password_hash, derived_key_salt, encrypted_file_master_key, encrypted_master_key_nonce):
+    def create_user(self, username, password, derived_key_salt, encrypted_file_master_key, encrypted_master_key_nonce):
         """
-        Create a new user if the user does not already exist in the system.
+        Creates a new user in the system if the user does not already exist.
 
-        This method checks if a user with the provided username already exists. If the user
-        does not exist, it creates a new user with the given credentials and security keys.
+        This method checks whether a username already exists in the system. If the user
+        does not exist, it hashes the given password and stores it along with the other
+        relevant details, such as cryptographic salts and keys, in the database. If the
+        user exists, no creation action is performed.
 
-        :param username: The unique identifier for the user.
+        :param username: The username of the new user to be created
         :type username: str
-        :param password_hash: The hashed password of the user.
-        :type password_hash: str
-        :param derived_key_salt: The cryptographic salt used for deriving user keys.
+        :param password: The plaintext password for the new user to be hashed and stored
+        :type password: str
+        :param derived_key_salt: The salt used for deriving the user's encryption keys
         :type derived_key_salt: bytes
-        :param encrypted_file_master_key: The encrypted file master key associated with the user.
+        :param encrypted_file_master_key: The user's file master key, encrypted for secure storage
         :type encrypted_file_master_key: bytes
-        :param encrypted_master_key_nonce: The nonce used with the encryption of the master key.
+        :param encrypted_master_key_nonce: The nonce used for encrypting and decrypting the
+            file master key
         :type encrypted_master_key_nonce: bytes
-        :return: A boolean indicating whether the user was successfully created. Returns True
-            if the user was created, False otherwise.
+        :return: True if the user was successfully created, False if the user already exists
         :rtype: bool
         """
         logging.debug("Checking if user exists already")
         if not self.dao.does_user_exist(username):
             logging.debug("User does not exist. Creating...")
+            password_hash = hash_password(password)
             self.dao.create_user(username, password_hash, derived_key_salt, encrypted_file_master_key, encrypted_master_key_nonce)
             logging.debug(f"User {username} created.")
             return True
@@ -53,24 +57,25 @@ class UsersService:
             logging.debug(f"User {username} already exists.")
             return False
 
-    def login(self, username, password_hash):
+    def login(self, username, password):
         """
-        Logs in a user by verifying their credentials against the stored records.
+        Log in a user by verifying their credentials.
 
-        This function checks whether a user exists based on the provided username.
-        If the user exists, the password hash is verified against the stored value.
-        If the credentials are valid, the appropriate result is returned.
+        This function checks if the user exists and validates the provided password
+        against the stored password hash. If the user exists and the password matches,
+        authentication is successful.
 
-        :param username: The username of the user attempting to log in.
+        :param username: The username of the user trying to log in.
         :type username: str
-        :param password_hash: The hashed password corresponding to the provided username.
-        :type password_hash: str
-        :return: A boolean indicating whether the login attempt was successful.
+        :param password: The plain text password provided by the user.
+        :type password: str
+        :return: True if the user exists and the password is correct, otherwise False.
         :rtype: bool
         """
-        logging.info(f"Logging in User, {username}, {password_hash}")
+        logging.info(f"Logging in User, {username}, {password}")
         if self.dao.does_user_exist(username):
-            return self.dao.check_username_against_password_hash(username, password_hash)
+            stored_hash =  self.dao.get_password_hash_for_username(username)
+            return verify_password(password, stored_hash)
         else:
             return False
 
@@ -141,19 +146,27 @@ class UsersService:
         """
         return self.dao.get_user_id(username)
 
-    def update_user_credentials(self, username, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce):
+    def update_user_credentials(self, username, new_password, new_salt, new_encrypted_file_master_key, new_nonce):
         """
-        Updates the user credentials for the given username. This operation will overwrite
-        the existing credentials, including the password hash, salt, encrypted file master
-        key, and nonce with the new values provided.
+        Updates the credentials of a user in the system by hashing the new password and
+        storing the updated information in the database.
 
-        :param username: The username of the user whose credentials are being updated.
-        :param new_password_hash: The updated password hash for the user.
-        :param new_salt: The updated cryptographic salt associated with the user.
-        :param new_encrypted_file_master_key: The updated encrypted file master key for
-            securing the user's files.
-        :param new_nonce: The updated nonce used for encryption or cryptographic operations.
+        :param username: The unique identifier of the user whose credentials need to
+            be updated.
+        :type username: str
+        :param new_password: The new password provided by the user, which will be
+            hashed and stored securely.
+        :type new_password: str
+        :param new_salt: The new cryptographic salt used for hashing the password.
+        :type new_salt: str
+        :param new_encrypted_file_master_key: The updated encrypted file master key
+            associated with the user.
+        :type new_encrypted_file_master_key: bytes
+        :param new_nonce: The new nonce value required for cryptographic operations.
+        :type new_nonce: bytes
         :return: None
+        :rtype: None
         """
         user_id = self.dao.get_user_id(username)
+        new_password_hash = hash_password(new_password)
         self.dao.update_user_credentials(user_id, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)

@@ -7,7 +7,7 @@ from jwt import DecodeError
 from Dependencies.Constants import private_key, public_key
 
 
-class TokenService:
+class TokensService:
     """
     Provides functionality for generating, validating, and decoding JWT tokens.
 
