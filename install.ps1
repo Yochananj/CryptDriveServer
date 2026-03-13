@@ -1,14 +1,15 @@
 # CryptDriveServer Installation Script for Windows
-# This script creates a virtual environment, installs dependencies, and starts the server
+# This script creates a virtual environment, installs dependencies from pyproject.toml, and starts the server
 
 $ErrorActionPreference = "Stop"
 
+Write-Host "===================================================" -ForegroundColor Cyan
 Write-Host "🔧 CryptDriveServer Installation Script for Windows" -ForegroundColor Cyan
-Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host "===================================================" -ForegroundColor Cyan
 
 # Check if Python 3 is installed
 try {
-    $pythonVersion = python --version 2>&1
+    $pythonVersion = py --version 2>&1
     Write-Host "✓ Python found: $pythonVersion" -ForegroundColor Green
 } catch {
     Write-Host "❌ Error: Python 3 is not installed." -ForegroundColor Red
@@ -18,7 +19,7 @@ try {
 
 # Check if pip is available
 try {
-    $pipVersion = python -m pip --version 2>&1
+    $pipVersion = py -m pip --version 2>&1
     Write-Host "✓ pip found: $pipVersion" -ForegroundColor Green
 } catch {
     Write-Host "❌ Error: pip is not available." -ForegroundColor Red
@@ -26,37 +27,39 @@ try {
     exit 1
 }
 
+# Check if pyproject.toml exists
+if (-not (Test-Path "pyproject.toml")) {
+    Write-Host "❌ Error: pyproject.toml not found in project root." -ForegroundColor Red
+    exit 1
+}
+
 # Create virtual environment
 Write-Host ""
 Write-Host "📦 Creating virtual environment..." -ForegroundColor Cyan
-if (Test-Path "venv") {
+if (Test-Path ".venv") {
     Write-Host "⚠️  Virtual environment already exists. Removing old one..." -ForegroundColor Yellow
-    Remove-Item -Recurse -Force "venv"
+    Remove-Item -Recurse -Force ".venv"
 }
 
-python -m venv venv
+py -m venv .venv
 Write-Host "✓ Virtual environment created" -ForegroundColor Green
 
 # Activate virtual environment
 Write-Host ""
 Write-Host "🔌 Activating virtual environment..." -ForegroundColor Cyan
-& ".\venv\Scripts\Activate.ps1"
+& ".\.venv\Scripts\Activate.ps1"
 Write-Host "✓ Virtual environment activated" -ForegroundColor Green
 
 # Upgrade pip
 Write-Host ""
 Write-Host "⬆️  Upgrading pip..." -ForegroundColor Cyan
-python -m pip install --upgrade pip
+py -m pip install --upgrade pip
 
-# Install dependencies from modules.txt
+# Install dependencies from pyproject.toml
 Write-Host ""
-if (Test-Path "src\modules.txt") {
-    Write-Host "📥 Installing dependencies from src\modules.txt..." -ForegroundColor Cyan
-    pip install -r src\modules.txt
-    Write-Host "✓ Dependencies installed successfully" -ForegroundColor Green
-} else {
-    Write-Host "⚠️  Warning: src\modules.txt not found. Skipping dependency installation." -ForegroundColor Yellow
-}
+Write-Host "📥 Installing project dependencies from pyproject.toml..." -ForegroundColor Cyan
+py -m pip install .
+Write-Host "✓ Dependencies installed successfully" -ForegroundColor Green
 
 # Installation complete
 Write-Host ""
@@ -68,4 +71,4 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host ""
 Write-Host "🚀 Starting CryptDriveServer..." -ForegroundColor Cyan
 Write-Host ""
-python src\main.py
+py src\main.py

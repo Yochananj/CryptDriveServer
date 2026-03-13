@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CryptDrive"
+version = "0.1.0"
+description = "An encrypted remote file storage solution"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "platformdirs",
+    "peewee",
+    "PyJWT",
+    "cryptography",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

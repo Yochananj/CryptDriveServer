@@ -1,4 +1,0 @@
-platformdirs
-peewee
-pyjwt
-cryptography

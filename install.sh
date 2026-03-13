@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # CryptDriveServer Installation Script for macOS
-# This script creates a virtual environment, installs dependencies, and starts the server
+# This script creates a virtual environment, installs dependencies from pyproject.toml, and starts the server
 
 set -e  # Exit on error
 
+echo "=================================================="
 echo "🔧 CryptDriveServer Installation Script for macOS"
 echo "=================================================="
 
@@ -26,37 +27,39 @@ fi
 
 echo "✓ pip found: $(python3 -m pip --version)"
 
+# Check if pyproject.toml exists
+if [ ! -f "pyproject.toml" ]; then
+    echo "❌ Error: pyproject.toml not found in project root."
+    exit 1
+fi
+
 # Create virtual environment
 echo ""
 echo "📦 Creating virtual environment..."
-if [ -d "venv" ]; then
+if [ -d ".venv" ]; then
     echo "⚠️  Virtual environment already exists. Removing old one..."
-    rm -rf venv
+    rm -rf .venv
 fi
 
-python3 -m venv venv
+python3 -m venv .venv
 echo "✓ Virtual environment created"
 
 # Activate virtual environment
 echo ""
 echo "🔌 Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 echo "✓ Virtual environment activated"
 
 # Upgrade pip
 echo ""
 echo "⬆️  Upgrading pip..."
-pip install --upgrade pip
+python -m pip install --upgrade pip
 
-# Install dependencies from modules.txt
+# Install dependencies from pyproject.toml
 echo ""
-if [ -f "src/modules.txt" ]; then
-    echo "📥 Installing dependencies from src/modules.txt..."
-    pip install -r src/modules.txt
-    echo "✓ Dependencies installed successfully"
-else
-    echo "⚠️  Warning: src/modules.txt not found. Skipping dependency installation."
-fi
+echo "📥 Installing project dependencies from pyproject.toml..."
+python -m pip install .
+echo "✓ Dependencies installed successfully"
 
 # Installation complete
 echo ""
