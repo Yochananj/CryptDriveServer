@@ -74,7 +74,7 @@ class UsersService:
         """
         logging.info(f"Logging in User, {username}, {password}")
         if self.dao.does_user_exist(username):
-            stored_hash =  self.dao.get_password_hash_for_username(username)
+            stored_hash = self.dao.get_password_hash_for_username(username)
             return verify_password(password, stored_hash)
         else:
             return False
@@ -146,7 +146,7 @@ class UsersService:
         """
         return self.dao.get_user_id(username)
 
-    def update_user_credentials(self, username, new_password, new_salt, new_encrypted_file_master_key, new_nonce):
+    def update_user_credentials(self, username, old_password, new_password, new_salt, new_encrypted_file_master_key, new_nonce):
         """
         Updates the credentials of a user in the system by hashing the new password and
         storing the updated information in the database.
@@ -154,6 +154,8 @@ class UsersService:
         :param username: The unique identifier of the user whose credentials need to
             be updated.
         :type username: str
+        :param old_password: The old password used by the user, which will be
+            verified before being updated to the new password provided.
         :param new_password: The new password provided by the user, which will be
             hashed and stored securely.
         :type new_password: str
@@ -167,6 +169,10 @@ class UsersService:
         :return: None
         :rtype: None
         """
-        user_id = self.dao.get_user_id(username)
-        new_password_hash = hash_password(new_password)
-        self.dao.update_user_credentials(user_id, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)
+        if not verify_password(old_password, self.dao.get_password_hash_for_username(username)):
+            return False
+        else:
+            user_id = self.dao.get_user_id(username)
+            new_password_hash = hash_password(new_password)
+            self.dao.update_user_credentials(user_id, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)
+            return True

@@ -13,6 +13,7 @@ dependencies = [
     "peewee",
     "PyJWT",
     "cryptography",
+    "argon2-cffi"
 ]
 
 [tool.setuptools]
