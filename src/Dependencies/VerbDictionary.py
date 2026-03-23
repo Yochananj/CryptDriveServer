@@ -53,3 +53,4 @@ class Verbs(enum.Enum):
     MOVE_DIR = "MOVE_DIR" # [old_dir_path, new_dir_path, dir_name]
     CHANGE_USERNAME = "CHANGE_USERNAME"  # [new_username]
     CHANGE_PASSWORD = "CHANGE_PASSWORD"  # [new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce]
+    REFRESH_ACCESS_TOKEN = "REFRESH_ACCESS_TOKEN"

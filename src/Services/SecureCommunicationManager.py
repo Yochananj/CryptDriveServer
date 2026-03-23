@@ -165,7 +165,7 @@ class SecureCommunicationManager:
         message_to_send = self._write_encrypted_data(message=message, token=self.token)
         logging.debug(f"Sending message: {message_to_send}")
         self.client.sendall(message_to_send)
-        logging.debug("Message sent\n\n\n\n")
+        logging.debug("Message sent\n\n")
 
     def _write_encrypted_data(
             self,

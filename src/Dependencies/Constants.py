@@ -1,5 +1,6 @@
 import os
 import platformdirs
+from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 # Constants:
 
@@ -25,9 +26,14 @@ host_addr = (server_address, server_port)
 
 buffer_size = 1024
 
-# Server-Only Constants:
+# Server Constants:
 server_storage_path = platformdirs.user_data_path(app_name)
 
+## Token Constants:
+access_token_lifetime = 15*60
+refresh_token_lifetime = 12*60*60
+encryption_token_lifetime = 30*60
+token_needs_refreshing_lifetime = 5*60
 
 # Server Keys
 dependencies_dir = os.path.dirname(os.path.abspath(__file__))
