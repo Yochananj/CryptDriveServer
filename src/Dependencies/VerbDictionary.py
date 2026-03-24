@@ -39,8 +39,8 @@ class Verbs(enum.Enum):
         security-related details.
     :type CHANGE_PASSWORD: str
     """
-    SIGN_UP = "SIGN_UP" # [username, password_hash, salt, encrypted_file_master_key, nonce]
-    LOG_IN = "LOG_IN" # [username, password_hash]
+    SIGN_UP = "SIGN_UP" # [username, password, salt, encrypted_file_master_key, nonce]
+    LOG_IN = "LOG_IN" # [username, password]
     CREATE_FILE = "CREATE_FILE" # [file_path, file_name, nonce] [file_contents]
     CREATE_DIR = "CREATE_DIR" # [path, dir_name]
     DOWNLOAD_FILE = "DOWNLOAD_FILE" # [file_path, file_name]
@@ -52,5 +52,5 @@ class Verbs(enum.Enum):
     MOVE_FILE = "MOVE_FILE" # [old_file_path, new_file_path, file_name]
     MOVE_DIR = "MOVE_DIR" # [old_dir_path, new_dir_path, dir_name]
     CHANGE_USERNAME = "CHANGE_USERNAME"  # [new_username]
-    CHANGE_PASSWORD = "CHANGE_PASSWORD"  # [new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce]
+    CHANGE_PASSWORD = "CHANGE_PASSWORD"  # [old_password, new_password, new_salt, new_encrypted_file_master_key, new_nonce]
     REFRESH_ACCESS_TOKEN = "REFRESH_ACCESS_TOKEN"
