@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
+from Services.PasswordHashingManager import verify_password
 from Services.SecureCommunicationManager import SecureCommunicationManager
 from Services.FilesService import FilesService, Items
 from Services.TokensService import TokensService
@@ -730,18 +731,21 @@ class ServerClass:
         :type is_token_valid: bool
         :param username: The current username of the user attempting the change.
         :type username: str
-        :return: A success message with a new login token if username change is successful, or an
-            error message specifying the problem.
+        :return: A success message with a new login token if the username change is successful, or
+            an error message specifying the problem.
         :rtype: str
         """
         logging.debug("verb = CHANGE_USERNAME")
         new_username = data[0]
         if is_token_valid:
-            logging.debug(f"Changing username from {username} to {new_username}")
-            if self.users_service.change_username(username, new_username):
-                return self._write_message("SUCCESS", self.tokens_service.create_access_token(new_username))
+            if self.users_service.verify_password_for_username(username, data[1]):
+                logging.debug(f"Changing username from {username} to {new_username}")
+                if self.users_service.change_username(username, new_username):
+                    return self._write_message("SUCCESS", False, self.tokens_service.create_access_token(new_username))
+                else:
+                    return self._write_message("ERROR", token_needs_refreshing, "USERNAME_ALREADY_TAKEN")
             else:
-                return self._write_message("ERROR", token_needs_refreshing, "USERNAME_ALREADY_TAKEN")
+                return self._write_message("ERROR", token_needs_refreshing, "INVALID_PASSWORD")
         else:
             return self._write_message("ERROR", token_needs_refreshing, "INVALID_TOKEN")
 

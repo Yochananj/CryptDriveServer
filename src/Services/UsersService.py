@@ -176,3 +176,19 @@ class UsersService:
             new_password_hash = hash_password(new_password)
             self.dao.update_user_credentials(user_id, new_password_hash, new_salt, new_encrypted_file_master_key, new_nonce)
             return True
+
+
+    def verify_password_for_username(self, username, password):
+        """
+        Verifies if the provided password matches the stored password hash for a given username.
+
+        :param username: The username for which the password needs to be verified.
+        :type username: str
+        :param password: The password to verify against the stored password hash.
+        :type password: str
+
+        :return: True if the provided password matches the stored password hash for the given username,
+            otherwise False.
+        :rtype: bool
+        """
+        return verify_password(password, self.dao.get_password_hash_for_username(username))
