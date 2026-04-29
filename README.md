@@ -21,19 +21,19 @@ for file storage and management with a focus on security and privacy.
 ## 📋 Requirements
 
 - Python 3.7+
-- Dependencies listed in `modules.txt`
+- Windows, Linux or MacOS
 
 ## 🔧 Installation
 
 ### Windows (PowerShell)
 1. Download and extract the zip file containing the repository.
-2. Open the terminal and navigate to the extracted folder.
+2. Open PowerShell and navigate to the extracted folder.
 3. Run the PowerShell script:
 ```powershell
 install.ps1
 ```
 
-### MacOS (Shell Script)
+### Linux or MacOS (Shell Script)
 1. Download and extract the zip file containing the repository.
 2. Open the terminal and navigate to the extracted folder.
 3. Execute this shell script:
