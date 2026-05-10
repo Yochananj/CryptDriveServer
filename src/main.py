@@ -10,9 +10,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
-from Services.PasswordHashingManager import verify_password
-from Services.SecureCommunicationManager import SecureCommunicationManager
 from Services.FilesService import FilesService, Items
+from Services.SecureCommunicationManager import SecureCommunicationManager
 from Services.TokensService import TokensService
 from Services.UsersService import UsersService
 
@@ -31,7 +30,7 @@ class ServerClass:
             server (socket.socket): The server socket instance.
             is_server_running (bool): Flag indicating whether the server is running.
             users_service (UsersService): Service for managing user-related operations.
-            file_service (FilesService): Service for handling file-related operations.
+            files_service (FilesService): Service for handling file-related operations.
             tokens_service (TokensService): Service for managing security tokens.
             encryption_token_master_key (bytes): The master key used for token encryption.
             host_addr (tuple of str, int): The host address consisting of IP and port.
@@ -56,7 +55,7 @@ class ServerClass:
         self.is_server_running = False
 
         self.users_service = UsersService()
-        self.file_service = FilesService(self.users_service)
+        self.files_service = FilesService(self.users_service)
 
         self.tokens_service = TokensService()
         self.encryption_token_master_key = AESGCM.generate_key(bit_length=256)
@@ -88,7 +87,7 @@ class ServerClass:
         :return: None
         """
         self.server.close()
-        self.file_service.close_db()
+        self.files_service.close_db()
         self.is_server_running = False
 
     def _server_listen(self):
@@ -282,7 +281,7 @@ class ServerClass:
         if needs_file_contents:
             logging.debug("Waiting for Data")
             encrypted_file_contents = secure_communication_manager.receive_data()
-            if self.file_service.create_file(username, file_path, file_name, encrypted_file_contents, nonce):
+            if self.files_service.create_file(username, file_path, file_name, encrypted_file_contents, nonce):
                 secure_communication_manager.respond_to_client(
                     self._write_message("SUCCESS", token_needs_refreshing, "FILE_CREATED").encode())
             else:
@@ -396,7 +395,7 @@ class ServerClass:
         :rtype: Any
         """
         if is_token_valid:
-            if self.file_service.move_dir(username, data[0], data[1], data[2]):
+            if self.files_service.move_dir(username, data[0], data[1], data[2]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
@@ -426,7 +425,7 @@ class ServerClass:
         :rtype: Any
         """
         if is_token_valid:
-            if self.file_service.move_file(username, data[0], data[1], data[2]):
+            if self.files_service.move_file(username, data[0], data[1], data[2]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
@@ -452,7 +451,7 @@ class ServerClass:
             directory rename operation
         """
         if is_token_valid:
-            if self.file_service.rename_dir(username, data[0], data[1], data[2]):
+            if self.files_service.rename_dir(username, data[0], data[1], data[2]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "DIR_NOT_FOUND_OR_ALREADY_EXISTS")
@@ -481,7 +480,7 @@ class ServerClass:
         :rtype: Any
         """
         if is_token_valid:
-            if self.file_service.rename_file(username, data[0], data[1], data[2]):
+            if self.files_service.rename_file(username, data[0], data[1], data[2]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "FILE_NOT_FOUND_OR_ALREADY_EXISTS")
@@ -507,7 +506,7 @@ class ServerClass:
         """
         logging.debug("verb = DELETE_DIR")
         if is_token_valid:
-            if self.file_service.delete_dir(username, data[0], data[1]):
+            if self.files_service.delete_dir(username, data[0], data[1]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "DIR_NOT_FOUND")
@@ -531,7 +530,7 @@ class ServerClass:
         :rtype: Any
         """
         if is_token_valid:
-            if self.file_service.create_dir(username, data[0], data[1]):
+            if self.files_service.create_dir(username, data[0], data[1]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "DIR_EXISTS")
@@ -553,7 +552,7 @@ class ServerClass:
         """
         logging.debug("verb = DELETE_FILE")
         if is_token_valid:
-            if self.file_service.delete_file(username, data[0], data[1]):
+            if self.files_service.delete_file(username, data[0], data[1]):
                 response = self._write_message("SUCCESS", token_needs_refreshing)
             else:
                 response = self._write_message("ERROR", token_needs_refreshing, "FILE_NOT_FOUND")
@@ -589,7 +588,7 @@ class ServerClass:
         logging.debug("verb = CREATE_FILE")
         file_path, file_name = data[0:2]
         if is_token_valid:
-            if self.file_service.can_create_file(username, file_path, file_name):
+            if self.files_service.can_create_file(username, file_path, file_name):
                 response = self._write_message("SUCCESS", token_needs_refreshing, "READY_FOR_DATA")
                 needs_file_contents = True
             else:
@@ -618,9 +617,9 @@ class ServerClass:
         """
         logging.debug("verb = GET_FILES_LIST")
         if is_token_valid:
-            dirs = self.file_service.get_dirs_list_for_path(username, data[0])
+            dirs = self.files_service.get_dirs_list_for_path(username, data[0])
             logging.debug(f"dirs: {dirs}")
-            files = self.file_service.get_files_list_in_path(username, data[0])
+            files = self.files_service.get_files_list_in_path(username, data[0])
             logging.debug(f"files: {files}")
             dirs_dumps = json.dumps([directory.__dict__ for directory in dirs])
             files_dumps = json.dumps([file_obj.__dict__ for file_obj in files])
@@ -652,7 +651,7 @@ class ServerClass:
         logging.debug("verb = DOWNLOAD_FILE")
         if is_token_valid:
             path, file_name = data[0], data[1]
-            encrypted_file_contents, nonce = self.file_service.get_file_contents_and_nonce(username, path, file_name)
+            encrypted_file_contents, nonce = self.files_service.get_file_contents_and_nonce(username, path, file_name)
             response_data = encrypted_file_contents
             logging.debug(f"Nonce: {nonce}")
             response = self._write_message("SUCCESS", token_needs_refreshing, b64encode(nonce).decode())
@@ -706,7 +705,7 @@ class ServerClass:
         username, password, salt, encrypted_file_master_key, nonce = data[0:6]
         if self.users_service.create_user(username, password, salt, encrypted_file_master_key, nonce):
             logging.debug(f"Created User: {username}, with password: {password}")
-            self.file_service.create_dir(username, None, "/")
+            self.files_service.create_dir(username, None, "/")
             logging.debug(f"Created root directory for user: {username}")
             tokens_dict_string = json.dumps({
                 "access_token": self.tokens_service.create_access_token(username),
