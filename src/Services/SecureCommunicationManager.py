@@ -1,3 +1,48 @@
+"""
+Secure Communication Manager Module
+
+This module provides secure, encrypted communication capabilities between clients and servers
+in the CryptDrive encrypted remote file storage solution. It implements end-to-end encryption
+using a combination of asymmetric (X25519) and symmetric (AES-GCM) cryptography.
+
+The module handles:
+- Initial encryption handshake using X25519 key exchange
+- Session key derivation using HKDF (HMAC-based Key Derivation Function)
+- Encrypted data transmission using AES-GCM (AES Galois/Counter Mode)
+- Token-based session management and authentication
+- Automatic token refresh for long-running sessions
+
+Key Components:
+    SecureCommunicationManager: Main class that orchestrates secure communication,
+        managing encryption keys, tokens, and data transfer protocols.
+
+Security Features:
+    - Perfect forward secrecy through ephemeral X25519 key pairs
+    - Authenticated encryption with AES-GCM
+    - Master key encryption for secure token storage
+    - Nonce-based replay attack prevention
+    - Token expiration and refresh mechanisms
+
+Protocol Flow:
+    1. Client initiates connection with INIT flag and public key
+    2. Server generates key pair, derives shared secret, creates session token
+    3. Subsequent messages use RESUME flag with token-based encryption
+    4. Tokens are automatically refreshed when nearing expiration
+
+Dependencies:
+    - cryptography: Provides cryptographic primitives
+    - TokensService: Manages authentication tokens
+    - Constants: Defines protocol flags and configuration values
+
+Example Usage:
+    ```python
+    manager = SecureCommunicationManager(client_socket, token_service, master_key)
+    received_data = manager.receive_data()
+    manager.respond_to_client(response_data)
+    ```
+"""
+
+
 import logging
 import socket
 import sys

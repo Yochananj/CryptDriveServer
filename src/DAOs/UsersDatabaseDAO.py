@@ -1,3 +1,21 @@
+"""
+User Database Data Access Object Module.
+
+This module provides database access and management functionality for user records
+in the CryptDrive application. It defines the database schema for user storage and
+implements a Data Access Object (DAO) pattern for secure user credential management.
+
+The module includes:
+- UsersDB: A Peewee ORM model representing the users table with cryptographic fields
+- UsersDatabaseDAO: A DAO class providing CRUD operations and credential management
+
+The database stores user authentication data including password hashes, encryption salts,
+and encrypted master keys necessary for secure file storage and retrieval. All
+cryptographic materials are stored as binary blobs to maintain their integrity.
+
+The SQLite database is stored at the path specified in the server_storage_path constant.
+"""
+
 import logging
 import os
 import peewee

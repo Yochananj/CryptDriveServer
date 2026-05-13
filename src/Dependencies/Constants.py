@@ -1,7 +1,36 @@
+"""
+Constants Module for CryptDrive Application.
+
+This module defines all application-wide constants used throughout the CryptDrive
+encrypted remote file storage solution. It includes configuration for:
+
+- Project metadata (application name and author)
+- Communication protocol flags for data transmission (separators, data type markers)
+- Encryption protocol flags (initialization, resume, and separator markers)
+- Network configuration (server address, port, and buffer size)
+- Server storage paths using platformdirs for cross-platform compatibility
+- Token lifetime configurations for access, refresh, and encryption tokens
+- RSA cryptographic key pair loading for JWT token signing
+
+The constants defined here are imported and used across various modules including
+DAOs, services, and network communication handlers to ensure consistent behavior
+throughout the application.
+
+Constants are organized into logical groups:
+    - Project Constants: Application identification
+    - Communication Flags: Protocol markers for client-server communication
+    - Encryption Flags: Protocol markers for encryption operations
+    - Common Constants: Network and buffer configuration
+    - Server Constants: Storage path configuration
+    - Token Constants: JWT token lifetime settings
+    - Server Keys: RSA key pair for cryptographic operations
+"""
+
+
 import os
 import platformdirs
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+# from cryptography.hazmat.primitives.asymmetric import rsa
+# from cryptography.hazmat.primitives import serialization
 # Constants:
 
 # Project Constants

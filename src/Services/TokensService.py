@@ -1,3 +1,26 @@
+"""
+JWT Token Management Service Module.
+
+This module provides comprehensive functionality for handling JSON Web Tokens (JWT)
+in the CryptDrive encrypted file storage system. It includes operations for creating,
+validating, decoding, and refreshing authentication and encryption tokens using the
+RS256 signing algorithm with RSA public/private key pairs.
+
+The module supports three types of tokens:
+- Access tokens: Short-lived tokens for authenticating API requests
+- Refresh tokens: Longer-lived tokens for obtaining new access tokens
+- Encryption tokens: Tokens containing encrypted keys and nonces for file encryption
+
+Classes:
+    TokensService: Primary service class for JWT token operations
+
+Dependencies:
+    - jwt: PyJWT library for JWT encoding/decoding
+    - cryptography: For RSA key management
+    - Dependencies.Constants: Configuration constants for token lifetimes and keys
+"""
+
+
 import time
 from base64 import b64encode
 

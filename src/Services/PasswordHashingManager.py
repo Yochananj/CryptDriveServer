@@ -1,3 +1,37 @@
+"""
+Password Hashing Manager Module
+
+This module provides secure password hashing and verification functionality for the
+CryptDrive encrypted file storage system. It implements the Argon2 password hashing
+algorithm, which is a modern, memory-hard key derivation function designed to resist
+GPU-based and custom hardware attacks.
+
+The module offers two primary functions:
+- hash_password: Securely hashes plaintext passwords using Argon2 with customized
+  parameters (time cost, memory cost, and parallelism) to provide strong protection
+  against brute-force attacks.
+- verify_password: Verifies that a plaintext password matches a previously hashed
+  password, enabling secure authentication.
+
+The Argon2 implementation uses the following parameters by default:
+- Time cost: 3 iterations
+- Memory cost: 64 MiB (65536 KiB)
+- Parallelism: 4 threads
+
+Dependencies:
+    - argon2-cffi: Provides Python bindings for the Argon2 password hashing algorithm
+
+Example usage:
+    >>> from Services.PasswordHashingManager import hash_password, verify_password
+    >>> hashed = hash_password("my_secure_password")
+    >>> is_valid = verify_password("my_secure_password", hashed)
+    >>> print(is_valid)
+    True
+
+This module is a critical component of the authentication and security infrastructure
+within CryptDrive, ensuring that user passwords are stored and validated securely.
+"""
+
 import argon2
 
 def hash_password(password: str) -> str:

@@ -1,3 +1,33 @@
+"""
+FilesDatabaseDAO Module
+
+This module provides database operations for managing file and directory metadata in the
+CryptDrive application. It contains the FilesDatabaseDAO class which handles all database
+interactions related to file storage information.
+
+The module manages:
+- File metadata storage including owner ID, path, name, size, UUID, and encryption nonce
+- Directory structure and hierarchy tracking
+- CRUD operations for files and directories
+- File and directory existence checks
+- Batch retrieval of files and directories within specific paths
+- Rename and move operations for files and directories
+
+The database schema is defined using Peewee ORM and stores metadata in an SQLite database.
+Physical file contents are not stored in this database; only metadata is maintained here.
+The actual file storage is handled by the FilesDiskDAO module.
+
+Classes:
+    FilesDB: Peewee model representing the file metadata database schema.
+    FilesDatabaseDAO: Main class providing database access methods for file operations.
+
+Dependencies:
+    - logging: For debug logging of database operations
+    - peewee: ORM for database operations
+    - os: For file path operations
+    - Dependencies.Constants: Provides the server_storage_path configuration
+"""
+
 import logging
 import peewee
 import os

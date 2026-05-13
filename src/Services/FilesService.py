@@ -1,3 +1,32 @@
+"""
+File management service module for CryptDrive.
+
+This module provides comprehensive file and directory management capabilities for the
+CryptDrive encrypted remote file storage solution. It handles all file system operations
+including creation, deletion, renaming, and moving of files and directories while
+coordinating with both database and disk storage layers.
+
+The module contains the following main classes:
+
+- FilesService: Core service class that orchestrates file operations and integrates with
+  UsersService for authentication, FilesDatabaseDAO for database operations, and 
+  FilesDiskDAO for disk-level file management.
+- Directory: Data class representing a filesystem directory with path and item count metadata.
+- File: Data class representing a file with name and size information.
+- Items: Container class for organizing collections of directories and files.
+
+The FilesService class provides methods for:
+- Creating and deleting files and directories
+- Renaming and moving files and directories
+- Retrieving file contents and metadata
+- Listing directory contents
+- Managing encrypted file storage with nonce values
+
+All file operations maintain consistency between disk storage and database records,
+ensuring data integrity across the system.
+"""
+
+
 import logging
 import uuid
 
@@ -501,32 +530,5 @@ class File:
         """
         self.name = name
         self.size = size
-
-class Items:
-    """
-    Represents a collection of directories and files.
-
-    This class is designed to store and manage a set of directories and files
-    provided during its initialization. It serves as a container to organize
-    and handle these resources effectively.
-
-    :ivar dirs_dumps: Contains a list or collection of directory-related data.
-    :type dirs_dumps: any
-    :ivar files_dumps: Contains a list or collection of file-related data.
-    :type files_dumps: any
-    """
-    def __init__(self, dirs_dumps, files_dumps):
-        """
-        Initializes the object with directory and file dump data.
-
-        :param dirs_dumps: Represents the directories data dump. Specific expected structure
-            or format of the data dump should be consistent across usage.
-        :type dirs_dumps: Any
-        :param files_dumps: Represents the files data dump. Specific expected structure
-            or format of the data dump should be consistent across usage.
-        :type files_dumps: Any
-        """
-        self.dirs_dumps = dirs_dumps
-        self.files_dumps = files_dumps
 
 

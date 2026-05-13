@@ -1,3 +1,26 @@
+"""
+UsersService Module
+
+This module provides a service layer for managing user-related operations in the
+CryptDrive encrypted remote file storage solution. It acts as an intermediary between
+the application logic and the data access layer, handling user authentication,
+registration, credential management, and cryptographic key retrieval.
+
+The UsersService class implements functionality for:
+- Creating new user accounts with encrypted master keys
+- Authenticating users via password verification
+- Updating usernames and user credentials
+- Managing user-specific cryptographic materials (salts, encrypted keys, nonces)
+- Deleting user accounts
+- Retrieving user identifiers and security-related data
+
+This module integrates with the UsersDatabaseDAO for database operations and the
+PasswordHashingManager for secure password hashing and verification using Argon2.
+All sensitive data, including passwords and encryption keys, are handled securely
+to maintain the confidentiality and integrity of user information.
+"""
+
+
 import logging
 
 from DAOs.UsersDatabaseDAO import UsersDatabaseDAO

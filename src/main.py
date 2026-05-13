@@ -1,3 +1,56 @@
+"""
+Main server implementation for CryptDrive encrypted remote file storage system.
+
+This module provides the core server functionality for handling client connections,
+processing requests, and managing file operations in an encrypted environment. The
+server supports concurrent client connections through a thread pool and implements
+secure communication channels for all data transmission.
+
+Key Features:
+    - Multi-threaded client connection handling
+    - Secure token-based authentication (access and refresh tokens)
+    - Encrypted file storage and retrieval
+    - User management (sign up, login, password/username changes)
+    - File operations (create, delete, download, rename, move)
+    - Directory operations (create, delete, rename, move)
+    - End-to-end encrypted communication
+
+Architecture:
+    The server is built around the ServerClass which orchestrates multiple services:
+    - UsersService: Handles user authentication and account management
+    - FilesService: Manages file and directory operations
+    - TokensService: Handles JWT token generation and validation
+    - SecureCommunicationManager: Manages encrypted client-server communication
+
+The server listens for TCP connections and processes client requests using a verb-based
+command system. All file contents are stored encrypted on disk, with encryption keys
+derived from user credentials. The server maintains no plaintext copies of user files.
+
+Usage:
+    Run this module directly to start the server:
+        $ python main.py
+
+    The server will bind to the configured host address and port, then listen for
+    incoming client connections. Use Ctrl+C to gracefully shutdown the server.
+
+Dependencies:
+    - cryptography: For AES-GCM encryption operations
+    - peewee: Database ORM for user and file metadata
+    - PyJWT: Token generation and validation
+    - argon2-cffi: Password hashing (via UsersService)
+
+Configuration:
+    Server configuration is loaded from Dependencies.Constants, including:
+    - host_addr: Server bind address and port
+    - server_storage_path: Root directory for encrypted file storage
+    - separator: Message component delimiter
+
+Notes:
+    - All client communications are encrypted using per-session keys
+    - File contents are encrypted client-side before transmission
+    - The server never has access to unencrypted file contents or user passwords
+"""
+
 import atexit
 import json
 import logging
@@ -10,7 +63,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from Dependencies.Constants import *
 from Dependencies.VerbDictionary import Verbs
-from Services.FilesService import FilesService, Items
+from Services.FilesService import FilesService
 from Services.SecureCommunicationManager import SecureCommunicationManager
 from Services.TokensService import TokensService
 from Services.UsersService import UsersService
@@ -822,6 +875,35 @@ class ServerClass:
             message += separator + status_code
         logging.debug(f"Final Message: {message if len(message) < 1000 else f'{message[:1000]}...'}")
         return message
+
+
+
+class Items:
+    """
+    Represents a collection of directories and files.
+
+    This class is designed to store and manage a set of directories and files
+    provided during its initialization. It serves as a container to organize
+    and handle these resources effectively.
+
+    :ivar dirs_dumps: Contains a list or collection of directory-related data.
+    :type dirs_dumps: any
+    :ivar files_dumps: Contains a list or collection of file-related data.
+    :type files_dumps: any
+    """
+    def __init__(self, dirs_dumps, files_dumps):
+        """
+        Initializes the object with directory and file dump data.
+
+        :param dirs_dumps: Represents the directories data dump. Specific expected structure
+            or format of the data dump should be consistent across usage.
+        :type dirs_dumps: Any
+        :param files_dumps: Represents the files data dump. Specific expected structure
+            or format of the data dump should be consistent across usage.
+        :type files_dumps: Any
+        """
+        self.dirs_dumps = dirs_dumps
+        self.files_dumps = files_dumps
 
 
 def run_server():

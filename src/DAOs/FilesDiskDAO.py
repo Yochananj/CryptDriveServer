@@ -1,3 +1,29 @@
+"""
+FilesDiskDAO Module
+
+This module provides disk-based file storage operations for the CryptDrive application.
+It contains the FilesDiskDAO class which manages the persistence layer for user files
+stored on the server's file system.
+
+The module handles core file operations including:
+- Writing files to disk with proper directory structure
+- Retrieving file contents and metadata
+- Deleting files from disk
+- Managing file organization by owner ID and UUID
+
+Files are stored in a hierarchical structure organized by owner ID, with each file
+identified by its UUID. The storage path is configured via the server_storage_path
+constant from the Dependencies.Constants module.
+
+Classes:
+    FilesDiskDAO: Main class for handling file storage and retrieval operations.
+
+Dependencies:
+    - logging: For debug logging of file operations
+    - os: For file system operations and path manipulation
+    - Dependencies.Constants: Provides the server_storage_path configuration
+"""
+
 import logging
 import os
 

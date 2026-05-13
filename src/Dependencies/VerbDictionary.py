@@ -1,3 +1,28 @@
+"""
+Verb Dictionary Module for CryptDrive Operations.
+
+This module defines the enumeration of available actions (verbs) that can be
+performed within the CryptDrive encrypted remote file storage system. It serves
+as a centralized dictionary mapping user and system operations to their respective
+string identifiers.
+
+The Verbs enumeration provides a standardized way to reference various operations
+including:
+- User account management (sign up, log in, authentication)
+- File operations (create, download, delete, rename, move)
+- Directory operations (create, delete, rename, move)
+- Account settings (change username, change password)
+- System operations (token refresh, item listing)
+
+Each verb includes inline comments documenting the expected parameters for the
+corresponding operation, facilitating consistent implementation across the
+application layers.
+
+Classes:
+    Verbs: Enumeration of all supported system operations with their parameter
+           specifications.
+"""
+
 import enum
 
 class Verbs(enum.Enum):
